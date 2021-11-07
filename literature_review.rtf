@@ -1,67 +1,18 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2636
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 TimesNewRomanPS-BoldMT;\f1\froman\fcharset0 Times-Roman;\f2\froman\fcharset0 TimesNewRomanPSMT;
-}
-{\colortbl;\red255\green255\blue255;\red255\green255\blue255;\red0\green0\blue0;\red16\green60\blue192;
-}
-{\*\expandedcolortbl;;\cssrgb\c100000\c100000\c100000;\cssrgb\c0\c0\c0;\cssrgb\c6667\c33333\c80000;
-}
-\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\deftab720
-\pard\pardeftab720\qc\partightenfactor0
+A Data Set and Deep Learning Algorithm for the Detection of Masses and Architectural Distortions in Digital Breast Tomosynthesis Images
+Mateusz Buda, MSc1; Ashirbani Saha, PhD1; Ruth Walsh, MD
+This study tries to answer the question of  “Can a curated, annotated, and publicly available data set of digital breast tomosynthesis (DBT) volumes be created for the development and validation of breast cancer computer-aided detection algorithms?”
+The dataset was randomly split into training, validation, and testing sets in a way that ensured no overlap of patients between the subsets. 
+For the validation set, they used the grid search to find the best model for each loss function. They also used FROC curves, free-response receiver operating characteristic, which shows the sensitivity of the model in relation to the number of false-positive predictions placed in slice images, volumes, or cases.
+For the testing set, they used a model trained by optimizing focal loss function and generated predictions for the test set. And finally, they evaluated the selected model using breast-based FROC computed on the testing set.
+In this diagnostic study, a curated and annotated data set of DBT studies that contained 22 032 reconstructed DBT volumes from 5060 patients was made publicly available. A deep learning algorithm for breast cancer detection was developed and tested, with a sensitivity of 65% on a test set
+https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2783046
 
-\f0\b\fs32 \cf0 \cb2 \expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec3 A Data Set and Deep Learning Algorithm for the Detection of Masses and Architectural Distortions in Digital Breast Tomosynthesis Images
-\f1\b0\fs24 \cb1 \
-
-\f0\b\fs32 \cb2 Mateusz Buda, MSc1; Ashirbani Saha, PhD1; Ruth Walsh, MD
-\f1\b0\fs24 \cb1 \
-\pard\pardeftab720\partightenfactor0
-
-\f2\fs32 \cf0 \cb2 This study tries to answer the question of\'a0 \'93Can a curated, annotated, and publicly available data set of digital breast tomosynthesis (DBT) volumes be created for the development and validation of breast cancer computer-aided detection algorithms?\'94
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 The dataset was randomly split into training, validation, and testing sets in a way that ensured no overlap of patients between the subsets.\'a0
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 For the validation set, they used the grid search to find the best model for each loss function. They also used FROC curves, free-response receiver operating characteristic, which shows the sensitivity of the model in relation to the number of false-positive predictions placed in slice images, volumes, or cases.
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 For the testing set, they used a model trained by optimizing focal loss function and generated predictions for the test set. And finally, they evaluated the selected model using breast-based FROC computed on the testing set.
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 In this diagnostic study, a curated and annotated data set of DBT studies that contained 22\uc0\u8239 032 reconstructed DBT volumes from 5060 patients was made publicly available. A deep learning algorithm for breast cancer detection was developed and tested, with a sensitivity of 65% on a test set
-\f1\fs24 \cb1 \
-\pard\pardeftab720\partightenfactor0
-{\field{\*\fldinst{HYPERLINK "https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2783046"}}{\fldrslt 
-\f2\fs32 \cf4 \cb2 \ul \ulc4 \strokec4 https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2783046}}\
-\
-\pard\pardeftab720\qc\partightenfactor0
-
-\f0\b\fs32 \cf0 \cb2 A Study Of Breast Cancer Analysis Using KNearest Neighbor With Different Distance
-\f1\b0\fs24 \cb1 \
-
-\f0\b\fs32 \cb2 Measures And Classification Rules Using
-\f1\b0\fs24 \cb1 \
-
-\f0\b\fs32 \cb2 Machine Learning
-\f1\b0\fs24 \cb1 \
-
-\f0\b\fs32 \cb2 M.D.Bakthavachalam1, Dr.S .Albert Antony Raj2
-\f1\b0\fs24 \cb1 \
-\pard\pardeftab720\partightenfactor0
-
-\f2\fs32 \cf0 \cb2 In this paper, they mainly want to propose a method for the prediction of Breast
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 Cancer. They used the Na\'efve Bayesian Classifier (NBC) to model decisions. They also used Logistic Regression (LR) and K-nearest neighbors method.\'a0
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 The kNN algorithm helps investigate the several variants of distance metrics, different K values and different classification rules. The dataset is partitioned into Training Set and Testing Set. Training set with class labels is used to train the model. Cross validation method was also used to build the models more effectively.
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 For the result, the high classification accuracy rate achieved is 98.70% for the Euclidean Distance Metrics with k value of 1. And the best accuracy yielded was from k-NN Algorithm with k=1 and distance measure of Euclidean. They observed that as they keep increasing the value of k, the accuracy decreases.
-\f1\fs24 \cb1 \
-
-\f2\fs32 \cb2 https://ejmcm.com/article_5172_967a0564c5efcd9ca4d9ca59189e807a.pdf
-\f1\fs24 \cb1 \
-}
+A Study Of Breast Cancer Analysis Using KNearest Neighbor With Different Distance
+Measures And Classification Rules Using
+Machine Learning
+M.D.Bakthavachalam1, Dr.S .Albert Antony Raj2
+In this paper, they mainly want to propose a method for the prediction of Breast
+Cancer. They used the Naïve Bayesian Classifier (NBC) to model decisions. They also used Logistic Regression (LR) and K-nearest neighbors method. 
+The kNN algorithm helps investigate the several variants of distance metrics, different K values and different classification rules. The dataset is partitioned into Training Set and Testing Set. Training set with class labels is used to train the model. Cross validation method was also used to build the models more effectively.
+For the result, the high classification accuracy rate achieved is 98.70% for the Euclidean Distance Metrics with k value of 1. And the best accuracy yielded was from k-NN Algorithm with k=1 and distance measure of Euclidean. They observed that as they keep increasing the value of k, the accuracy decreases.
+https://ejmcm.com/article_5172_967a0564c5efcd9ca4d9ca59189e807a.pdf
