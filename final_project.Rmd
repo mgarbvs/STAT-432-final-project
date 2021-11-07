@@ -21,10 +21,11 @@ unique(brca_data$ER.Status)
 unique(brca_data$HER2.Final.Status)
 unique(brca_data$histological.type)
 
-write.csv(brca_data, "cleaned_brca_data.csv")
+#write.csv(brca_data, "cleaned_brca_data.csv")
 
 
 brca_data <- read.csv('cleaned_brca_data.csv')
+brca_data <- brca_data[,-1]
 ```
 
 
