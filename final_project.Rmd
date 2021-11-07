@@ -12,11 +12,17 @@ urlcolor: blue
 
 
 ```{r}
-#brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
-#brca_data <- brca_data[,-1937]
-#brca_data[(brca_data$histological.type == "infiltrating lobular carcinoma") | (brca_data$histological.type == "infiltrating ductal carcinoma") | (brca_data$HER2.Final.Status == "Positive") | (brca_data$HER2.Final.Status == "Negative") | (brca_data$ER.Status == "Positive") | (brca_data$ER.Status == "Negative") | (brca_data$PR.Status == "Positive") | (brca_data$PR.Status == "Negative")]
+brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
+brca_data <- brca_data[,-1937]
+brca_data <- brca_data[((brca_data$histological.type == "infiltrating lobular carcinoma") | (brca_data$histological.type == "infiltrating ductal carcinoma")) & ((brca_data$HER2.Final.Status == "Positive") | (brca_data$HER2.Final.Status == "Negative")) & ((brca_data$ER.Status == "Positive") | (brca_data$ER.Status == "Negative")) & ((brca_data$PR.Status == "Positive") | (brca_data$PR.Status == "Negative")),]
 
-#write.csv(brca_data, "cleaned_brca_data.csv")
+unique(brca_data$PR.Status)
+unique(brca_data$ER.Status)
+unique(brca_data$HER2.Final.Status)
+unique(brca_data$histological.type)
+
+write.csv(brca_data, "cleaned_brca_data.csv")
+
 
 brca_data <- read.csv('cleaned_brca_data.csv')
 ```
@@ -26,11 +32,15 @@ brca_data <- read.csv('cleaned_brca_data.csv')
 library(vtable)
 library(Rfast)
 #sweep(brca_data,0,median,na.omit)
-colMeans(brca_data)
+#colMeans(brca_data)
 #colVars(brca_data, na.rm=T)
 #apply(brca_data,2,max,na.rm=TRUE)
 sapply(brca_data,class) #Datatypes
 st(brca_data) #Makes a HUGE table. Is this necessary?
+
+colnames(brca_data)
+brca_data 
+
 ```
 
 
