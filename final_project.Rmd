@@ -8,8 +8,10 @@ output:
 urlcolor: blue
 
 ---
+\center
+![UIUC Logo](images/1200px-University_of_Illinois_seal.svg.png){#id .class width=25% height=50%}
+\center
 \newpage
-
 
 ```{r}
 #TODO: Housekeeping, i.e. organization etc
@@ -64,8 +66,9 @@ rs_data_10 = rs_data[,order(sapply(rs_data,var))[1:round(0.1*dim(rs_data)[2])]]
 pp_data <- non_categorical_data[,grepl('pp_', names(non_categorical_data))]
 pp_data_10 = pp_data[,order(sapply(pp_data,var))[1:round(0.1*dim(pp_data)[2])]]
 combined_10_data <- cbind(rs_data_10,pp_data_10)
+dim(combined_10_data)
 
-
+#st(combined_10_data)
 #top 10% overall
 num = round(0.1*dim(non_categorical_data)[2])
 top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[1:num]]
@@ -78,33 +81,35 @@ top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[
 library(caret)
 library(class)
 set.seed(432)
-
 control <- trainControl(method = "repeatedcv", number = 10, repeats = 5) #might take a while
-train = (response_data$PR.Status)
+train = response_data$PR.Status
 train_data_unsplit = cbind(train,combined_10_data)
 train_data_unsplit = data.matrix(train_data_unsplit)
-train_rows <- sample(nrow(train_data_unsplit), size = 354)
+
+
+#80 20 split
+train_rows <- sample(nrow(train_data_unsplit), size = floor(0.8 *nrow(train_data_unsplit)))
 train_data <- train_data_unsplit[train_rows,]
 test_data = train_data_unsplit[-train_rows,]
-
 ```
 
 ```{r}
 library(kknn)
 
-knn.cvfit <- train(y ~ ., method = "knn", data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])), 
+knn.cvfit <- train(y ~ ., method = "knn", 
+                   data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])), 
                    tuneGrid = data.frame(k = seq(1, 10, 1)),trControl = control)
-knn.cvfit
+
+best_k <- knn.cvfit$bestTune$k
 
 knn_prediction <- predict(knn.cvfit, data = train_data[,-1])
-table(train_data[,1], knn_prediction)
 
 plot(knn.cvfit$results$k, 1-knn.cvfit$results$Accuracy,
 xlab = "K", ylab = "Classification Error", type = "b",
 pch = 19, col = "darkorange")
-knn_prediction <- knn(train = train_data[,-1], test = test_data[,-1], cl = train_data[,1], k = 5)
+knn_prediction <- knn(train = train_data[,-1], test = test_data[,-1], cl = train_data[,1], k = best_k)
 table(test_data[,1],knn_prediction)
-(31 + 94)/(31+94+22+6)
+(80)/(80 + 17 + 5)
 ```
 
 ```{r}
@@ -113,12 +118,16 @@ library(glmnet)
 train_lasso_no_cv <- glmnet(x = train_data[,-1], y = train_data[,1], family = "binomial")
 lowest_lambda <- min(train_lasso_no_cv$lambda)
 test_predict <- predict(train_lasso_no_cv, test_data[,-1], s = lowest_lambda, type = "class")
-#plot(train_lasso_fit$glmnet.fit, "lambda") Not very useful...
 table(test_data[,1], test_predict)
+plot(train_lasso_no_cv, "lambda")
 #Results can get calculated later depending on which model is best.
-
+(19 + 57)/(19 + 57 + 18 + 8)
+```
+```{r}
 
 ```
+
+
 `r (30 + 79) / (30 + 79 + 44) `% accuracy
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
