@@ -65,6 +65,7 @@ pp_data <- non_categorical_data[,grepl('pp_', names(non_categorical_data))]
 pp_data_10 = pp_data[,order(sapply(pp_data,var))[1:round(0.1*dim(pp_data)[2])]]
 combined_10_data <- cbind(rs_data_10,pp_data_10)
 
+
 #top 10% overall
 num = round(0.1*dim(non_categorical_data)[2])
 top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[1:num]]
@@ -78,10 +79,8 @@ library(caret)
 library(class)
 set.seed(432)
 
-#Create data
-
 control <- trainControl(method = "repeatedcv", number = 10, repeats = 5) #might take a while
-train = (response_data$histological.type)
+train = (response_data$PR.Status)
 train_data_unsplit = cbind(train,combined_10_data)
 train_data_unsplit = data.matrix(train_data_unsplit)
 train_rows <- sample(nrow(train_data_unsplit), size = 354)
@@ -91,41 +90,36 @@ test_data = train_data_unsplit[-train_rows,]
 ```
 
 ```{r}
-library(ElemStatLearn)
-class(zip.train)
-class(train_data)
-zip.train[,1]
-#comparing with zip.train
+library(kknn)
 
-knn.fit <- train(y ~ ., method = "knn", data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])),
-      tune.grid = data.frame(k = seq(1,10,1)), trControl = control,
-      allowParallel = TRUE) #Allows rstudio.cloud usage
+knn.cvfit <- train(y ~ ., method = "knn", data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])), 
+                   tuneGrid = data.frame(k = seq(1, 10, 1)),trControl = control)
+knn.cvfit
 
-knn.fit$bestTune
-#Doesnt use our tunings, trying to use the 2 level factor as outcome column but creates errors too! Very frustrating.
+knn_prediction <- predict(knn.cvfit, data = train_data[,-1])
+table(train_data[,1], knn_prediction)
 
-levels((train_data[,1]))
-
-factor(train_data[,1], labels = c("a","b"))
-
+plot(knn.cvfit$results$k, 1-knn.cvfit$results$Accuracy,
+xlab = "K", ylab = "Classification Error", type = "b",
+pch = 19, col = "darkorange")
+knn_prediction <- knn(train = train_data[,-1], test = test_data[,-1], cl = train_data[,1], k = 5)
+table(test_data[,1],knn_prediction)
+(31 + 94)/(31+94+22+6)
 ```
 
 ```{r}
 library(glmnet)
-train_lasso_fit <- cv.glmnet(train_data[,-1], train_data[,1], nfolds = 10, alpha = 1, type.measure = "class") #Using split with lasso/ridge
-best_lambda = train_lasso_fit$lambda.min #most nonzero
-plot(train_lasso_fit)
-predict(train_lasso_fit, test_data[,-1], s = best_lambda, type = "coefficients")
 
-#no cv, i think cv is only avaliable for gaussians. 
 train_lasso_no_cv <- glmnet(x = train_data[,-1], y = train_data[,1], family = "binomial")
 lowest_lambda <- min(train_lasso_no_cv$lambda)
 test_predict <- predict(train_lasso_no_cv, test_data[,-1], s = lowest_lambda, type = "class")
 #plot(train_lasso_fit$glmnet.fit, "lambda") Not very useful...
 table(test_data[,1], test_predict)
 #Results can get calculated later depending on which model is best.
-```
 
+
+```
+`r (30 + 79) / (30 + 79 + 44) `% accuracy
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
