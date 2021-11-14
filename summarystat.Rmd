@@ -1,0 +1,178 @@
+---
+title: "Summary statistics"
+author: "Duyen Ho"
+date: "11/7/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("~/Desktop/Courses/432finalproject")
+brca <- read.csv('~/Desktop/Courses/432finalproject/brca_data_w_subtypes.csv')
+brca <- brca[,-1937]
+brca <- brca[((brca$histological.type == "infiltrating lobular carcinoma") | (brca$histological.type == "infiltrating ductal carcinoma")) & ((brca$HER2.Final.Status == "Positive") | (brca$HER2.Final.Status == "Negative")) & ((brca$ER.Status == "Positive") | (brca$ER.Status == "Negative")) & ((brca$PR.Status == "Positive") | (brca$PR.Status == "Negative")),]
+
+dim(brca)
+
+```
+
+
+```{r}
+variances <- apply(brca, MARGIN=2, FUN=var)
+```
+
+
+```{r}
+#correlation percentage 
+#pick top 10% var for rn and pp
+#15%,10%
+#modelling,lda,same model,different input, knn
+
+data <- read.csv('cleaned_brca_data.csv')
+data <- data[,-1]
+data <- data[!(data$PR.Status)=="",]
+#[1:604] are rn - gene expressions 604
+#[605:1464] are cn - copy number variations 860
+#[1465:1713] are mu - somatic mutations 249
+#[1714:1936] are pp - protein expression 223
+#[1937:1940] are 4 outcomes
+```
+
+```{r}
+#Get the top 10% variances variables for rn
+variances_rn <- apply(brca[1:604], MARGIN=2, FUN=var)
+sorted_rn <- sort(variances_rn, decreasing=TRUE, index.return=TRUE)$ix[1:60]
+var_rn <- brca[, sorted_rn]
+var_rn <-as.data.frame(var_rn)
+rn_range <- t(sapply(var_rn,range))
+#library(Hmisc)
+#hist.data.frame(var_rn)
+```
+
+```{r}
+#Get the top 10% variances variables for pp
+variances_pp <- apply(brca[1714:1936], MARGIN=2, FUN=var)
+sorted_pp <- sort(variances_pp, decreasing=TRUE, index.return=TRUE)$ix[1:22]
+var_pp <- brca[, sorted_pp]
+var_pp <-as.data.frame(var_pp)
+pp_range <- t(sapply(var_pp,range))
+```
+
+```{r}
+# only use variances using the corr mat
+non_categorical_brca = cbind(brca[1:604], brca[1714:1936])
+# use correlation matrix
+cor_mat = cor(non_categorical_brca)
+
+# returns vector of indices to remove
+library(caret)
+cor_list = findCorrelation(cor_mat, cutoff = .8)
+
+non_categorical_brca = non_categorical_brca[, -c(cor_list)]
+
+categorical <- cbind(brca[605:1464], brca[1465:1713])
+var_data <- cbind(var_rn,var_pp,categorical,brca[1937:1940])
+num_data <- cbind(var_rn,var_pp,brca[1937:1940])
+dim(num_data)
+View(num_data)
+library(vtable)
+st(num_data)
+
+```
+
+
+##KNN & Lasso
+
+```{r}
+set.seed(432)
+#Splitting data 80/20
+size <- floor(0.8*nrow(num_data))
+#obtain row number
+train <- sample(seq_len(nrow(num_data)),size=size)
+#Labels
+train_lab <- num_data[train, 83]
+test_lab <- num_data[-train]
+#Data
+training <- num_data[train, 1:83]
+testing <- num_data[-train, 1:83]
+```
+
+
+```{r}
+#Perform Lasso on your data to predict PR.Status
+library(glmnet)
+library(ElemStatLearn)
+PR_pos<-as.numeric(ifelse(num_data$PR.Status=="Positive",1,0))
+lasso.fit = cv.glmnet(data.matrix(num_data[, -83]), PR_pos)
+#Best tuning parameter
+lasso.fit$lambda.min
+par(mfrow = c(1, 2))
+plot(lasso.fit)
+plot(lasso.fit$glmnet.fit, "lambda")
+coef(lasso.fit, s = "lambda.min")
+```
+
+
+```{r}
+#Michael's Lasso
+set.seed(432)
+library(glmnet)
+train_lasso_fit <- cv.glmnet(data.matrix(num_data[, 1:82]), PR_pos, nfolds = 10, alpha = 1, type.measure = "class") 
+#Using split with lasso/ridge
+best_lambda = train_lasso_fit$lambda.min 
+#most nonzero
+plot(train_lasso_fit)
+predict(train_lasso_fit, testing[,-83], s = best_lambda, type = "coefficients")
+
+#no cv, i think cv is only avaliable for gaussians.
+train_lasso_no_cv <- glmnet(x = training[,-83], y = training[,83], family = "binomial")
+lowest_lambda <- min(train_lasso_no_cv$lambda)
+test_predict_la <- predict(train_lasso_no_cv, data.matrix(testing[, -83]), s = lowest_lambda, type = "class")
+
+table(data.matrix(testing[, 83]), test_predict_la)
+
+(25+55)/(25+55+22)
+```
+
+```{r}
+#Perform KNN on your data to predict PR.Status
+library(caret)
+library(class)
+control <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
+  
+set.seed(432)
+knn.cvfit <- train(y ~ ., method = "knn", 
+                     data = data.frame("x" = training[, -83], "y" = as.factor(training[, 83])),
+                     tuneGrid = data.frame(k = seq(1, 10, 1)),
+                     trControl = control)
+knn.cvfit
+
+plot(knn.cvfit$results$k, 1-knn.cvfit$results$Accuracy,
+       xlab = "K", ylab = "Classification Error", type = "b",
+       pch = 19, col = "darkorange")
+
+testpred = knn(train = training[, -83], test= testing[, -83], cl = as.factor(training[, 83]), k = 9)
+  
+table(testpred, as.factor(testing[, 83]))
+(21+63)/(21+63+18)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
