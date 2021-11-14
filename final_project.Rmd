@@ -12,38 +12,119 @@ urlcolor: blue
 
 
 ```{r}
-brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
-brca_data <- brca_data[,-1937]
-brca_data <- brca_data[((brca_data$histological.type == "infiltrating lobular carcinoma") | (brca_data$histological.type == "infiltrating ductal carcinoma")) & ((brca_data$HER2.Final.Status == "Positive") | (brca_data$HER2.Final.Status == "Negative")) & ((brca_data$ER.Status == "Positive") | (brca_data$ER.Status == "Negative")) & ((brca_data$PR.Status == "Positive") | (brca_data$PR.Status == "Negative")),]
+#TODO: Housekeeping, i.e. organization etc
+#brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
+#brca_data <- brca_data[,-1937]
+#brca_data <- brca_data[((brca_data$histological.type == "infiltrating lobular carcinoma") | (brca_data$histological.type == "infiltrating ductal carcinoma")) & ((brca_data$HER2.Final.Status == "Positive") | (brca_data$HER2.Final.Status == "Negative")) & ((brca_data$ER.Status == "Positive") | (brca_data$ER.Status == "Negative")) & ((brca_data$PR.Status == "Positive") | (brca_data$PR.Status == "Negative")),]
 
-unique(brca_data$PR.Status)
-unique(brca_data$ER.Status)
-unique(brca_data$HER2.Final.Status)
-unique(brca_data$histological.type)
+#unique(brca_data$PR.Status)
+#unique(brca_data$ER.Status)
+#unique(brca_data$HER2.Final.Status)
+#unique(brca_data$histological.type)
 
 #write.csv(brca_data, "cleaned_brca_data.csv")
 
 
 brca_data <- read.csv('cleaned_brca_data.csv')
-brca_data <- brca_data[,-1]
+brca_data = brca_data[,-1]
+brca_data = brca_data[,-1]
+#Why does X sometimes show up? Works if this is done twice... let's get rid of it earlier.
 ```
 
 
 ```{r}
 library(vtable)
 library(Rfast)
+"X" %in% colnames(brca_data)
 #sweep(brca_data,0,median,na.omit)
 #colMeans(brca_data)
-#colVars(brca_data, na.rm=T)
-#apply(brca_data,2,max,na.rm=TRUE)
-sapply(brca_data,class) #Datatypes
-st(brca_data) #Makes a HUGE table. Is this necessary?
+#colVars(brca_data)
+length(which(sapply(brca_data,class) %in% "integer")) #Datatypes
+num_of_predictors <- dim(brca_data)[2] - 1109 - 4
+non_categorical_data <- (brca_data[,-(which(sapply(brca_data,class) %in% "integer"))])
+response_data <- non_categorical_data[,(828:831)]
+non_categorical_data = (non_categorical_data[,-(828:831)])
 
-colnames(brca_data)
-brca_data 
+#apply(non_categorical_data[,-(827:831)],2,var)[order(apply(non_categorical_data[,-(827:831)],2,var))]
+
+#st(brca_data) #Makes a HUGE table. Is this necessary?
+
+#Should we do a test-train split? No big changes in code needs to be made if so.
+
+#[1:604] are rs - rna sequencing  604
+#[605:1464] are cn - copy number variations 860
+#[1465:1713] are mu - somatic mutations 249
+#[1714:1936] are pp - protein expression 223 
+#[1937:1940] are 4 outcomes
+#Top 10% of variance for each 
+
+#Certain percentage of each type? 
+rs_data <- non_categorical_data[,grepl('rs_', names(non_categorical_data))]
+rs_data_10 = rs_data[,order(sapply(rs_data,var))[1:round(0.1*dim(rs_data)[2])]]
+pp_data <- non_categorical_data[,grepl('pp_', names(non_categorical_data))]
+pp_data_10 = pp_data[,order(sapply(pp_data,var))[1:round(0.1*dim(pp_data)[2])]]
+combined_10_data <- cbind(rs_data_10,pp_data_10)
+
+#top 10% overall
+num = round(0.1*dim(non_categorical_data)[2])
+top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[1:num]]
 
 ```
 
+# Histological Type
+
+```{r}
+library(caret)
+library(class)
+set.seed(432)
+
+#Create data
+
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 5) #might take a while
+train = (response_data$histological.type)
+train_data_unsplit = cbind(train,combined_10_data)
+train_data_unsplit = data.matrix(train_data_unsplit)
+train_rows <- sample(nrow(train_data_unsplit), size = 354)
+train_data <- train_data_unsplit[train_rows,]
+test_data = train_data_unsplit[-train_rows,]
+
+```
+
+```{r}
+library(ElemStatLearn)
+class(zip.train)
+class(train_data)
+zip.train[,1]
+#comparing with zip.train
+
+knn.fit <- train(y ~ ., method = "knn", data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])),
+      tune.grid = data.frame(k = seq(1,10,1)), trControl = control,
+      allowParallel = TRUE) #Allows rstudio.cloud usage
+
+knn.fit$bestTune
+#Doesnt use our tunings, trying to use the 2 level factor as outcome column but creates errors too! Very frustrating.
+
+levels((train_data[,1]))
+
+factor(train_data[,1], labels = c("a","b"))
+
+```
+
+```{r}
+library(glmnet)
+train_lasso_fit <- cv.glmnet(train_data[,-1], train_data[,1], nfolds = 10, alpha = 1, type.measure = "class") #Using split with lasso/ridge
+best_lambda = train_lasso_fit$lambda.min #most nonzero
+plot(train_lasso_fit)
+predict(train_lasso_fit, test_data[,-1], s = best_lambda, type = "coefficients")
+
+#no cv, i think cv is only avaliable for gaussians. 
+train_lasso_no_cv <- glmnet(x = train_data[,-1], y = train_data[,1], family = "binomial")
+lowest_lambda <- min(train_lasso_no_cv$lambda)
+test_predict <- predict(train_lasso_no_cv, test_data[,-1], s = lowest_lambda, type = "class")
+#plot(train_lasso_fit$glmnet.fit, "lambda") Not very useful...
+table(test_data[,1], test_predict)
+#Results can get calculated later depending on which model is best.
+```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
