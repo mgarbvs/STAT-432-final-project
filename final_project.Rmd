@@ -9,7 +9,7 @@ urlcolor: blue
 
 ---
 \center
-![UIUC Logo](images/1200px-University_of_Illinois_seal.svg.png){#id .class width=25% height=50%}
+![UIUC Logo](images/1200px-University_of_Illinois_seal.svg.png){#id .class width=30%, height=30%}
 \center
 \newpage
 
@@ -129,6 +129,55 @@ plot(train_lasso_no_cv, "lambda")
 
 
 `r (30 + 79) / (30 + 79 + 44) `% accuracy
+
+```{r}
+#SVM, histological type
+library(e1071)
+library(caret)
+set.seed(432)
+train = response_data$histological.type
+combined_data = cbind(rs_data,pp_data)
+train_data_unsplit = cbind(train,combined_data)
+#continue to use the combined 10 data? or use the full data
+
+#train_data_unsplit[,'train']  1 and 2
+#80 20 split
+train_rows <- sample(nrow(train_data_unsplit), size = floor(0.8 *nrow(train_data_unsplit)))
+train_data <- train_data_unsplit[train_rows,]
+test_data = train_data_unsplit[-train_rows,]
+
+
+
+#Let's consider a few different kernels 
+#Sigma is the distance from the boundary
+#Do we want a high cost? Or a low one?
+
+svm.radial <- train(train ~ ., data = train_data, method = "svmRadial",
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(C = c(0.01, 0.1, 0.5, 1), sigma = c(1, 2, 3)),
+                trControl = trainControl(method = "cv", number = 5))
+
+
+svm.linear <- train(train ~ ., data = train_data, method = 'svmLinear',
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(C = c(0.01, 0.1, 0.5, 1)),
+                trControl = trainControl(method = "cv", number = 5))
+
+svm.radial
+svm.linear
+
+linear_svm_prediction <- predict(svm.linear, test_data[,-1])
+table(linear_svm_prediction, test_data[,1]) #rename for easy reading?
+
+radial_svm_prediction <- predict(svm.radial, test_data[,-1])
+table(radial_svm_prediction, test_data[,1]) 
+
+```
+
+
+
+
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
