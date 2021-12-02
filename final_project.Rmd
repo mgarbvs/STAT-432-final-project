@@ -73,6 +73,17 @@ dim(combined_10_data)
 num = round(0.1*dim(non_categorical_data)[2])
 top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[1:num]]
 
+
+
+# only use variances using the corr mat
+non_categorical_brca = cbind(brca_data[1:604], brca_data[1714:1936])
+
+# use correlation matrix
+cor_mat = cor(non_categorical_brca)
+
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+
 ```
 
 # Histological Type
@@ -80,7 +91,7 @@ top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[
 ```{r}
 library(caret)
 library(class)
-set.seed(432)
+set.seed(123)
 control <- trainControl(method = "repeatedcv", number = 10, repeats = 5) #might take a while
 train = response_data$PR.Status
 train_data_unsplit = cbind(train,combined_10_data)
@@ -88,17 +99,16 @@ train_data_unsplit = data.matrix(train_data_unsplit)
 
 
 #80 20 split
-train_rows <- sample(nrow(train_data_unsplit), size = floor(0.8 *nrow(train_data_unsplit)))
+train_rows <- sample(nrow(train_data_unsplit), size = floor(0.75 *nrow(train_data_unsplit)))
 train_data <- train_data_unsplit[train_rows,]
 test_data = train_data_unsplit[-train_rows,]
 ```
 
 ```{r}
 library(kknn)
-
 knn.cvfit <- train(y ~ ., method = "knn", 
                    data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])), 
-                   tuneGrid = data.frame(k = seq(1, 10, 1)),trControl = control)
+                   tuneGrid = data.frame(k = seq(1, 20, 1)),trControl = control)
 
 best_k <- knn.cvfit$bestTune$k
 
@@ -110,18 +120,29 @@ pch = 19, col = "darkorange")
 knn_prediction <- knn(train = train_data[,-1], test = test_data[,-1], cl = train_data[,1], k = best_k)
 table(test_data[,1],knn_prediction)
 (80)/(80 + 17 + 5)
+(102)/(101+26)
 ```
 
 ```{r}
 library(glmnet)
 
-train_lasso_no_cv <- glmnet(x = train_data[,-1], y = train_data[,1], family = "binomial")
+train_lasso_no_cv <- glmnet(x = train_data[,-1], y = train_data[,1], family = "binomial", alpha = 1)
 lowest_lambda <- min(train_lasso_no_cv$lambda)
 test_predict <- predict(train_lasso_no_cv, test_data[,-1], s = lowest_lambda, type = "class")
 table(test_data[,1], test_predict)
-plot(train_lasso_no_cv, "lambda")
+#plot(train_lasso_no_cv, "lambda")
+
+
+cv_glm <- cv.glmnet(train_data[,-1], train_data[,1], nfolds = 10, alpha = 1, type.measure = "class", family = "binomial")
+lowest_lambda <- min(cv_glm$lambda)
+test_predict <- predict(cv_glm, test_data[,-1], s = lowest_lambda, type = "class")
+lowest_lambda <- min(cv_glm$lambda)
+table(test_data[,1], test_predict)
+#plot(train_lasso_no_cv, "lambda")
+
 #Results can get calculated later depending on which model is best.
 (19 + 57)/(19 + 57 + 18 + 8)
+(68 + 26)/(68 + 26 + 16 + 17)
 ```
 ```{r}
 
@@ -171,6 +192,9 @@ table(linear_svm_prediction, test_data[,1]) #rename for easy reading?
 
 radial_svm_prediction <- predict(svm.radial, test_data[,-1])
 table(radial_svm_prediction, test_data[,1]) 
+
+brca_data
+
 
 ```
 
