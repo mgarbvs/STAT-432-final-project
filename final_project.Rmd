@@ -14,6 +14,7 @@ urlcolor: blue
 \newpage
 
 ```{r}
+#Include jpg?
 library(caret)
 #TODO: Housekeeping, i.e. organization etc
 #brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
