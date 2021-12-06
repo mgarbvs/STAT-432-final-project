@@ -14,6 +14,7 @@ urlcolor: blue
 \newpage
 
 ```{r}
+library(caret)
 #TODO: Housekeeping, i.e. organization etc
 #brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
 #brca_data <- brca_data[,-1937]
@@ -37,6 +38,8 @@ brca_data = brca_data[,-1]
 ```{r}
 library(vtable)
 library(Rfast)
+#svm to include the categoricals, write report, variable selection
+
 "X" %in% colnames(brca_data)
 #sweep(brca_data,0,median,na.omit)
 #colMeans(brca_data)
@@ -153,12 +156,24 @@ table(test_data[,1], test_predict)
 
 ```{r}
 #SVM, histological type
+library(ROCR)
 library(e1071)
 library(caret)
+non_response_brca <- brca_data[,-c(which(colnames(brca_data) %in% c('PR.Status','ER.Status','HER2.Final.Status','histological.type')))]
+
+#SVM W/ Full data
+#non_categorical_brca = cbind(brca_data[1:604], brca_data[1714:1936])
+# use correlation matrix
+#cor_mat = cor(non_categorical_brca)
+# returns vector of indices to remove
+#cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+
+
+
 set.seed(432)
-train = response_data$histological.type
-combined_data = cbind(rs_data,pp_data)
-train_data_unsplit = cbind(train,combined_data)
+train = brca_data$histological.type
+train_data_unsplit = cbind(train,non_response_brca)
 #continue to use the combined 10 data? or use the full data
 
 #train_data_unsplit[,'train']  1 and 2
@@ -187,13 +202,77 @@ svm.linear <- train(train ~ ., data = train_data, method = 'svmLinear',
 svm.radial
 svm.linear
 
+library(kableExtra)
 linear_svm_prediction <- predict(svm.linear, test_data[,-1])
-table(linear_svm_prediction, test_data[,1]) #rename for easy reading?
+#kable(table(linear_svm_prediction, test_data[,1])) #rename for easy reading?
+
+#90% accuracy
+#(87+4)/(87+8+7)
 
 radial_svm_prediction <- predict(svm.radial, test_data[,-1])
-table(radial_svm_prediction, test_data[,1]) 
+#kable(table(radial_svm_prediction, test_data[,1])
 
-brca_data
+
+
+
+#Radial --> unable to classify any infiltrating lobular carcinoma. Linear is the better model
+library(ROCR)
+
+lin.svm <- prediction(as.numeric(as.factor(linear_svm_prediction)), as.factor(test_data[,1]))
+
+rad.svm <- prediction(as.numeric(as.factor(radial_svm_prediction)), as.factor(test_data[,1]))
+
+performance(lin.svm,measure = "auc")@y.values[[1]]
+#Linear has a performance of about 65.98%
+performance(rad.svm,measure = "auc")@y.values[[1]]
+#Radial is rather poor, at 50%.
+```
+# Model Selection --> using XGBoost
+```{r fig.width = 5, fig.height=5}
+par(mfrow = c(2,2))
+set.seed(1)
+sample(1:3, 705, replace = TRUE) #Not sure about the fold id stuff TBH
+library(dplyr)
+library(xgboost)
+response_data_f <- sapply(response_data,as.factor)
+response_data_n <- data.frame(sapply(response_data, function(x) as.numeric(as.factor(x)) - 1))
+#How to combine?
+#response_data_n
+
+train_rows <- sample(nrow(non_response_brca), size = floor(0.8 *nrow(non_response_brca)))
+train_data <- non_response_brca[train_rows,]
+test_data <- non_response_brca[-train_rows,]
+response_data_n_train <- response_data_n[train_rows,]
+
+
+xgb_model_pr <- xgboost(data = as.matrix(train_data),label = response_data_n_train$PR.Status, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+#Can use parallel computing for this task!
+importance <- xgb.importance(model = xgb_model_pr) #sort off of gain?
+median(importance$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance,50))
+
+xgb_model_er <- xgboost(data = as.matrix(train_data),label = response_data_n_train$ER.Status, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+importance_er <- xgb.importance(model = xgb_model_er)
+median(importance_er$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance_er,50))
+
+
+xgb_model_hrfs <- xgboost(data = as.matrix(train_data),label = response_data_n_train$HER2.Final.Status, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+importance <- xgb.importance(model = xgb_model_hrfs)
+importance
+median(importance$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance,50))
+colnames(response_data)
+
+xgb_model_ht <- xgboost(data = as.matrix(train_data),label = response_data_n_train$histological.type, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+importance <- xgb.importance(model = xgb_model_ht)
+median(importance$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance,50))
+#How to do train-test split
+#https://pubmed.ncbi.nlm.nih.gov/33283143/
+
+colnames(response_data)
+
 
 
 ```
