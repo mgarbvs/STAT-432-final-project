@@ -173,6 +173,25 @@ non_response_brca <- brca_data[,-c(which(colnames(brca_data) %in% c('PR.Status',
 
 
 set.seed(432)
+
+
+
+#SVM WITH MATCORR DATA
+#
+
+# use correlation matrix
+cor_mat = cor(non_response_brca)
+
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+non_response_brca <- non_response_brca[,cor_list]
+
+#New BRCA data 
+
+
+
+
 train = brca_data$histological.type
 train_data_unsplit = cbind(train,non_response_brca)
 #continue to use the combined 10 data? or use the full data
@@ -188,6 +207,8 @@ test_data = train_data_unsplit[-train_rows,]
 #Let's consider a few different kernels 
 #Sigma is the distance from the boundary
 #Do we want a high cost? Or a low one?
+
+
 
 svm.radial <- train(train ~ ., data = train_data, method = "svmRadial",
                 preProcess = c("center", "scale"),
@@ -226,51 +247,75 @@ rad.svm <- prediction(as.numeric(as.factor(radial_svm_prediction)), as.factor(te
 performance(lin.svm,measure = "auc")@y.values[[1]]
 #Linear has a performance of about 65.98%
 performance(rad.svm,measure = "auc")@y.values[[1]]
-#Radial is rather poor, at 50%.
+
 ```
 # Model Selection --> using XGBoost
 ```{r fig.width = 5, fig.height=5}
+
+#Go in rstudio.cloud
+
 par(mfrow = c(2,2))
 set.seed(1)
 sample(1:3, 705, replace = TRUE) #Not sure about the fold id stuff TBH
 library(dplyr)
 library(xgboost)
+library(ROCR)
 response_data_f <- sapply(response_data,as.factor)
 response_data_n <- data.frame(sapply(response_data, function(x) as.numeric(as.factor(x)) - 1))
 #How to combine?
 #response_data_n
+#non_response_brca <- brca_data[,-c(which(colnames(brca_data) %in% c('PR.Status','ER.Status','HER2.Final.Status','histological.type')))]
 
 train_rows <- sample(nrow(non_response_brca), size = floor(0.8 *nrow(non_response_brca)))
 train_data <- non_response_brca[train_rows,]
 test_data <- non_response_brca[-train_rows,]
 response_data_n_train <- response_data_n[train_rows,]
+response_data_n_test <- response_data_n[-train_rows,]
 
-
-xgb_model_pr <- xgboost(data = as.matrix(train_data),label = response_data_n_train$PR.Status, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
-#Can use parallel computing for this task!
+xgb_model_pr <- xgboost(data = as.matrix(train_data),label = response_data_n_train$PR.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
+#Can use parallel computing for this task! 63
 importance <- xgb.importance(model = xgb_model_pr) #sort off of gain?
 median(importance$Gain[1:50], na.rm = T)
 xgb.plot.importance(head(importance,50))
 
-xgb_model_er <- xgboost(data = as.matrix(train_data),label = response_data_n_train$ER.Status, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+pr_pred <- predict(xgb_model_pr, as.matrix(test_data))
+pr_pred_test <- prediction(pr_pred, response_data_n_test$PR.Status)
+performance(pr_pred_test, measure = "auc")@y.values[[1]]
+
+xgb_model_er <- xgboost(data = as.matrix(train_data),label = response_data_n_train$ER.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:logistic", eval_metric = 'auc')
 importance_er <- xgb.importance(model = xgb_model_er)
 median(importance_er$Gain[1:50], na.rm = T)
 xgb.plot.importance(head(importance_er,50))
 
+er_pred <- predict(xgb_model_er, as.matrix(test_data))
+er_pred_test <- prediction(pr_pred, response_data_n_test$ER.Status)
+performance(er_pred_test, measure = "auc")@y.values[[1]]
 
-xgb_model_hrfs <- xgboost(data = as.matrix(train_data),label = response_data_n_train$HER2.Final.Status, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+
+#hrfs 61
+xgb_model_hrfs <- xgboost(data = as.matrix(train_data),label = response_data_n_train$HER2.Final.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
 importance <- xgb.importance(model = xgb_model_hrfs)
 importance
 median(importance$Gain[1:50], na.rm = T)
 xgb.plot.importance(head(importance,50))
 colnames(response_data)
 
-xgb_model_ht <- xgboost(data = as.matrix(train_data),label = response_data_n_train$histological.type, max_depth = 4,eta = 1, nthread = 2, nrounds = 10,objective = "binary:logistic", eval_metric = 'auc')
+hr_pred <- predict(xgb_model_hrfs, as.matrix(test_data))
+hr_pred_test <- prediction(hr_pred, response_data_n_test$HER2.Final.Status)
+performance(hr_pred_test, measure = "auc")@y.values[[1]]
+
+xgb_model_ht <- xgboost(data = as.matrix(train_data),label = response_data_n_train$histological.type, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
 importance <- xgb.importance(model = xgb_model_ht)
 median(importance$Gain[1:50], na.rm = T)
 xgb.plot.importance(head(importance,50))
+
+ht_pred <- predict(xgb_model_ht, as.matrix(test_data))
+ht_pred_test <- prediction(ht_pred, response_data_n_test$histological.type)
+performance(ht_pred_test, measure = "auc")@y.values[[1]]
+
 #How to do train-test split
 #https://pubmed.ncbi.nlm.nih.gov/33283143/
+
 
 colnames(response_data)
 
