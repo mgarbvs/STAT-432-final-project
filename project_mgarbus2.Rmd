@@ -1,0 +1,81 @@
+---
+title: "Project_mgarbus2"
+author: "Michael Garbus mgarbus2"
+date: "12/6/2021"
+output:
+  pdf_document:
+    toc_depth: 2
+urlcolor: blue
+---
+
+<center>
+
+#Todo: shrink to height, add TOC.
+{#id .class width=30%, height=30%}
+
+
+![UIUC Logo](images/1200px-University_of_Illinois_seal.svg.png)\
+
+
+
+</center>
+
+
+
+
+\newpage
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Description and Summary
+Cancer is currently the leading cause of death in the world, with female breast cancer being the most frequently diagnosed type of cancer, making up about $12%$ of total cases worldwide. [https://acsjournals.onlinelibrary.wiley.com/doi/full/10.3322/caac.21660]. If we are able to accurately classify breast cancer from a sample, we will be able to inform medical professionals on the next steps they should take and improve health outcomes on a global scale.
+
+## Literature Review
+
+# Literature review in Duyen's as well.
+We consulted some research involving the subject to guide us in our modelling.
+The first study considered was "Breast Cancer Prediction: A Comparative Study Using Machine
+Learning Techniques", by Islam, M.M. et al. in SN Computer Science.  The paper compares 5 different supervised machine learning techniques (SVM, KNN, random forests, ANN, and logistic regression.) They divided the data into test and train sets, and used a 10-fold cross validation, with nine-fold used for training and the remaining fold used for testing. The results revealed that ANNs return the highest accuracy ($98.57%$), KNN and SVM came second ($97.1%$). ANNs also achieved the highest specificity ($96%$). The Wisconsin Breast Cancer dataset was used.
+
+A similar study, "Using Machine Learning Algorithms for Breast Cancer Risk
+Prediction and Diagnosis", Asri. tested SVM, decision tree, Naive Bayes, as well as KNN on the same dataset. Asri et al. discovered that although SVM took the longest time to create a model, it resulted in the highest accuracy. I do not believe that time constraints will be important in regards to our model. For this reason, we decided to use SVM for our model.
+
+
+
+
+
+```
+A Study Of Breast Cancer Analysis Using KNearest Neighbor With Different Distance
+Measures And Classification Rules Using
+Machine Learning
+M.D.Bakthavachalam1, Dr.S .Albert Antony Raj2
+In this paper, they mainly want to propose a method for the prediction of Breast
+Cancer. They used the Naïve Bayesian Classifier (NBC) to model decisions. They also used Logistic Regression (LR) and K-nearest neighbors method. 
+The kNN algorithm helps investigate the several variants of distance metrics, different K values and different classification rules. The dataset is partitioned into Training Set and Testing Set. Training set with class labels is used to train the model. Cross validation method was also used to build the models more effectively.
+For the result, the high classification accuracy rate achieved is 98.70% for the Euclidean Distance Metrics with k value of 1. And the best accuracy yielded was from k-NN Algorithm with k=1 and distance measure of Euclidean. They observed that as they keep increasing the value of k, the accuracy decreases.
+https://ejmcm.com/article_5172_967a0564c5efcd9ca4d9ca59189e807a.pdf
+```
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+#summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+#plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
