@@ -276,11 +276,11 @@ xgb_model_pr <- xgboost(data = as.matrix(train_data),label = response_data_n_tra
 #Can use parallel computing for this task! 63
 importance <- xgb.importance(model = xgb_model_pr) #sort off of gain?
 median(importance$Gain[1:50], na.rm = T)
-xgb.plot.importance(head(importance,50))
+xgb.plot.importance(head(importance,50)) 
 
 pr_pred <- predict(xgb_model_pr, as.matrix(test_data))
 pr_pred_test <- prediction(pr_pred, response_data_n_test$PR.Status)
-performance(pr_pred_test, measure = "auc")@y.values[[1]]
+performance(pr_pred_test, measure = "auc")@y.values[[1]] #79
 
 xgb_model_er <- xgboost(data = as.matrix(train_data),label = response_data_n_train$ER.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:logistic", eval_metric = 'auc')
 importance_er <- xgb.importance(model = xgb_model_er)
@@ -288,8 +288,8 @@ median(importance_er$Gain[1:50], na.rm = T)
 xgb.plot.importance(head(importance_er,50))
 
 er_pred <- predict(xgb_model_er, as.matrix(test_data))
-er_pred_test <- prediction(pr_pred, response_data_n_test$ER.Status)
-performance(er_pred_test, measure = "auc")@y.values[[1]]
+er_pred_test <- prediction(er_pred, response_data_n_test$ER.Status)
+performance(er_pred_test, measure = "auc")@y.values[[1]] #95.4%
 
 
 #hrfs 61
@@ -302,7 +302,7 @@ colnames(response_data)
 
 hr_pred <- predict(xgb_model_hrfs, as.matrix(test_data))
 hr_pred_test <- prediction(hr_pred, response_data_n_test$HER2.Final.Status)
-performance(hr_pred_test, measure = "auc")@y.values[[1]]
+performance(hr_pred_test, measure = "auc")@y.values[[1]] #78.1746
 
 xgb_model_ht <- xgboost(data = as.matrix(train_data),label = response_data_n_train$histological.type, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
 importance <- xgb.importance(model = xgb_model_ht)
@@ -311,7 +311,7 @@ xgb.plot.importance(head(importance,50))
 
 ht_pred <- predict(xgb_model_ht, as.matrix(test_data))
 ht_pred_test <- prediction(ht_pred, response_data_n_test$histological.type)
-performance(ht_pred_test, measure = "auc")@y.values[[1]]
+performance(ht_pred_test, measure = "auc")@y.values[[1]] #74.44
 
 #How to do train-test split
 #https://pubmed.ncbi.nlm.nih.gov/33283143/
