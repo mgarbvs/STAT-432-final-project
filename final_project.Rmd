@@ -1,0 +1,334 @@
+---
+title: "Stat 432 Final Project"
+author: "Michael Garbus mgarbus2"
+date: "Assigned: Oct 11, 2021; <span style='color:red'>Due: 11:59 PM CT, Oct 19, 2021</span>"
+output:
+  pdf_document:
+    toc_depth: 2
+urlcolor: blue
+
+---
+\center
+![UIUC Logo](images/1200px-University_of_Illinois_seal.svg.png){#id .class width=30%, height=30%}
+\center
+\newpage
+
+```{r}
+#Include jpg?
+library(caret)
+#TODO: Housekeeping, i.e. organization etc
+#brca_data <- read.csv("C:/Users/micha/Documents/School/STAT 432/project/brca_data_w_subtypes.csv")
+#brca_data <- brca_data[,-1937]
+#brca_data <- brca_data[((brca_data$histological.type == "infiltrating lobular carcinoma") | (brca_data$histological.type == "infiltrating ductal carcinoma")) & ((brca_data$HER2.Final.Status == "Positive") | (brca_data$HER2.Final.Status == "Negative")) & ((brca_data$ER.Status == "Positive") | (brca_data$ER.Status == "Negative")) & ((brca_data$PR.Status == "Positive") | (brca_data$PR.Status == "Negative")),]
+
+#unique(brca_data$PR.Status)
+#unique(brca_data$ER.Status)
+#unique(brca_data$HER2.Final.Status)
+#unique(brca_data$histological.type)
+
+#write.csv(brca_data, "cleaned_brca_data.csv")
+
+
+brca_data <- read.csv('cleaned_brca_data.csv')
+brca_data = brca_data[,-1]
+brca_data = brca_data[,-1]
+#Why does X sometimes show up? Works if this is done twice... let's get rid of it earlier.
+```
+
+
+```{r}
+library(vtable)
+library(Rfast)
+#svm to include the categoricals, write report, variable selection
+
+"X" %in% colnames(brca_data)
+#sweep(brca_data,0,median,na.omit)
+#colMeans(brca_data)
+#colVars(brca_data)
+length(which(sapply(brca_data,class) %in% "integer")) #Datatypes
+num_of_predictors <- dim(brca_data)[2] - 1109 - 4
+non_categorical_data <- (brca_data[,-(which(sapply(brca_data,class) %in% "integer"))])
+response_data <- non_categorical_data[,(828:831)]
+non_categorical_data = (non_categorical_data[,-(828:831)])
+
+#apply(non_categorical_data[,-(827:831)],2,var)[order(apply(non_categorical_data[,-(827:831)],2,var))]
+
+#st(brca_data) #Makes a HUGE table. Is this necessary?
+
+#Should we do a test-train split? No big changes in code needs to be made if so.
+
+#[1:604] are rs - rna sequencing  604
+#[605:1464] are cn - copy number variations 860
+#[1465:1713] are mu - somatic mutations 249
+#[1714:1936] are pp - protein expression 223 
+#[1937:1940] are 4 outcomes
+#Top 10% of variance for each 
+
+#Certain percentage of each type? 
+rs_data <- non_categorical_data[,grepl('rs_', names(non_categorical_data))]
+rs_data_10 = rs_data[,order(sapply(rs_data,var))[1:round(0.1*dim(rs_data)[2])]]
+pp_data <- non_categorical_data[,grepl('pp_', names(non_categorical_data))]
+pp_data_10 = pp_data[,order(sapply(pp_data,var))[1:round(0.1*dim(pp_data)[2])]]
+combined_10_data <- cbind(rs_data_10,pp_data_10)
+dim(combined_10_data)
+
+#st(combined_10_data)
+#top 10% overall
+num = round(0.1*dim(non_categorical_data)[2])
+top_10_overall <- non_categorical_data[,order(sapply(non_categorical_data,var))[1:num]]
+
+
+
+# only use variances using the corr mat
+non_categorical_brca = cbind(brca_data[1:604], brca_data[1714:1936])
+
+# use correlation matrix
+cor_mat = cor(non_categorical_brca)
+
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+```
+
+# Histological Type
+
+```{r}
+library(caret)
+library(class)
+set.seed(123)
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 5) #might take a while
+train = response_data$PR.Status
+train_data_unsplit = cbind(train,combined_10_data)
+train_data_unsplit = data.matrix(train_data_unsplit)
+
+
+#80 20 split
+train_rows <- sample(nrow(train_data_unsplit), size = floor(0.75 *nrow(train_data_unsplit)))
+train_data <- train_data_unsplit[train_rows,]
+test_data = train_data_unsplit[-train_rows,]
+```
+
+```{r}
+library(kknn)
+knn.cvfit <- train(y ~ ., method = "knn", 
+                   data = data.frame("x" = train_data[,-1], "y" = as.factor(train_data[,1])), 
+                   tuneGrid = data.frame(k = seq(1, 20, 1)),trControl = control)
+
+best_k <- knn.cvfit$bestTune$k
+
+knn_prediction <- predict(knn.cvfit, data = train_data[,-1])
+
+plot(knn.cvfit$results$k, 1-knn.cvfit$results$Accuracy,
+xlab = "K", ylab = "Classification Error", type = "b",
+pch = 19, col = "darkorange")
+knn_prediction <- knn(train = train_data[,-1], test = test_data[,-1], cl = train_data[,1], k = best_k)
+table(test_data[,1],knn_prediction)
+(80)/(80 + 17 + 5)
+(102)/(101+26)
+```
+
+```{r}
+library(glmnet)
+
+train_lasso_no_cv <- glmnet(x = train_data[,-1], y = train_data[,1], family = "binomial", alpha = 1)
+lowest_lambda <- min(train_lasso_no_cv$lambda)
+test_predict <- predict(train_lasso_no_cv, test_data[,-1], s = lowest_lambda, type = "class")
+table(test_data[,1], test_predict)
+#plot(train_lasso_no_cv, "lambda")
+
+
+cv_glm <- cv.glmnet(train_data[,-1], train_data[,1], nfolds = 10, alpha = 1, type.measure = "class", family = "binomial")
+lowest_lambda <- min(cv_glm$lambda)
+test_predict <- predict(cv_glm, test_data[,-1], s = lowest_lambda, type = "class")
+lowest_lambda <- min(cv_glm$lambda)
+table(test_data[,1], test_predict)
+#plot(train_lasso_no_cv, "lambda")
+
+#Results can get calculated later depending on which model is best.
+(19 + 57)/(19 + 57 + 18 + 8)
+(68 + 26)/(68 + 26 + 16 + 17)
+```
+```{r}
+
+```
+
+
+`r (30 + 79) / (30 + 79 + 44) `% accuracy
+
+```{r}
+#SVM, histological type
+library(ROCR)
+library(e1071)
+library(caret)
+non_response_brca <- brca_data[,-c(which(colnames(brca_data) %in% c('PR.Status','ER.Status','HER2.Final.Status','histological.type')))]
+
+#SVM W/ Full data
+#non_categorical_brca = cbind(brca_data[1:604], brca_data[1714:1936])
+# use correlation matrix
+#cor_mat = cor(non_categorical_brca)
+# returns vector of indices to remove
+#cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+
+
+
+set.seed(432)
+
+
+
+#SVM WITH MATCORR DATA
+#
+
+# use correlation matrix
+cor_mat = cor(non_response_brca)
+
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+non_response_brca <- non_response_brca[,cor_list]
+
+#New BRCA data 
+
+
+
+
+train = brca_data$histological.type
+train_data_unsplit = cbind(train,non_response_brca)
+#continue to use the combined 10 data? or use the full data
+
+#train_data_unsplit[,'train']  1 and 2
+#80 20 split
+train_rows <- sample(nrow(train_data_unsplit), size = floor(0.8 *nrow(train_data_unsplit)))
+train_data <- train_data_unsplit[train_rows,]
+test_data = train_data_unsplit[-train_rows,]
+
+
+
+#Let's consider a few different kernels 
+#Sigma is the distance from the boundary
+#Do we want a high cost? Or a low one?
+
+
+
+svm.radial <- train(train ~ ., data = train_data, method = "svmRadial",
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(C = c(0.01, 0.1, 0.5, 1), sigma = c(1, 2, 3)),
+                trControl = trainControl(method = "cv", number = 5))
+
+
+svm.linear <- train(train ~ ., data = train_data, method = 'svmLinear',
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(C = c(0.01, 0.1, 0.5, 1)),
+                trControl = trainControl(method = "cv", number = 5))
+
+svm.radial
+svm.linear
+
+library(kableExtra)
+linear_svm_prediction <- predict(svm.linear, test_data[,-1])
+#kable(table(linear_svm_prediction, test_data[,1])) #rename for easy reading?
+
+#90% accuracy
+#(87+4)/(87+8+7)
+
+radial_svm_prediction <- predict(svm.radial, test_data[,-1])
+#kable(table(radial_svm_prediction, test_data[,1])
+
+
+
+
+#Radial --> unable to classify any infiltrating lobular carcinoma. Linear is the better model
+library(ROCR)
+
+lin.svm <- prediction(as.numeric(as.factor(linear_svm_prediction)), as.factor(test_data[,1]))
+
+rad.svm <- prediction(as.numeric(as.factor(radial_svm_prediction)), as.factor(test_data[,1]))
+
+performance(lin.svm,measure = "auc")@y.values[[1]]
+#Linear has a performance of about 65.98%
+performance(rad.svm,measure = "auc")@y.values[[1]]
+
+```
+# Model Selection --> using XGBoost
+```{r fig.width = 5, fig.height=5}
+
+#Go in rstudio.cloud
+
+par(mfrow = c(2,2))
+set.seed(1)
+sample(1:3, 705, replace = TRUE) #Not sure about the fold id stuff TBH
+library(dplyr)
+library(xgboost)
+library(ROCR)
+response_data_f <- sapply(response_data,as.factor)
+response_data_n <- data.frame(sapply(response_data, function(x) as.numeric(as.factor(x)) - 1))
+#How to combine?
+#response_data_n
+#non_response_brca <- brca_data[,-c(which(colnames(brca_data) %in% c('PR.Status','ER.Status','HER2.Final.Status','histological.type')))]
+
+train_rows <- sample(nrow(non_response_brca), size = floor(0.8 *nrow(non_response_brca)))
+train_data <- non_response_brca[train_rows,]
+test_data <- non_response_brca[-train_rows,]
+response_data_n_train <- response_data_n[train_rows,]
+response_data_n_test <- response_data_n[-train_rows,]
+
+xgb_model_pr <- xgboost(data = as.matrix(train_data),label = response_data_n_train$PR.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
+#Can use parallel computing for this task! 63
+importance <- xgb.importance(model = xgb_model_pr) #sort off of gain?
+median(importance$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance,50)) 
+
+pr_pred <- predict(xgb_model_pr, as.matrix(test_data))
+pr_pred_test <- prediction(pr_pred, response_data_n_test$PR.Status)
+performance(pr_pred_test, measure = "auc")@y.values[[1]] #79
+
+xgb_model_er <- xgboost(data = as.matrix(train_data),label = response_data_n_train$ER.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:logistic", eval_metric = 'auc')
+importance_er <- xgb.importance(model = xgb_model_er)
+median(importance_er$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance_er,50))
+
+er_pred <- predict(xgb_model_er, as.matrix(test_data))
+er_pred_test <- prediction(er_pred, response_data_n_test$ER.Status)
+performance(er_pred_test, measure = "auc")@y.values[[1]] #95.4%
+
+
+#hrfs 61
+xgb_model_hrfs <- xgboost(data = as.matrix(train_data),label = response_data_n_train$HER2.Final.Status, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
+importance <- xgb.importance(model = xgb_model_hrfs)
+importance
+median(importance$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance,50))
+colnames(response_data)
+
+hr_pred <- predict(xgb_model_hrfs, as.matrix(test_data))
+hr_pred_test <- prediction(hr_pred, response_data_n_test$HER2.Final.Status)
+performance(hr_pred_test, measure = "auc")@y.values[[1]] #78.1746
+
+xgb_model_ht <- xgboost(data = as.matrix(train_data),label = response_data_n_train$histological.type, max_depth = 6,eta = 0.3, nthread = 2, nrounds = 50,objective = "binary:hinge", eval_metric = 'auc')
+importance <- xgb.importance(model = xgb_model_ht)
+median(importance$Gain[1:50], na.rm = T)
+xgb.plot.importance(head(importance,50))
+
+ht_pred <- predict(xgb_model_ht, as.matrix(test_data))
+ht_pred_test <- prediction(ht_pred, response_data_n_test$histological.type)
+performance(ht_pred_test, measure = "auc")@y.values[[1]] #74.44
+
+#How to do train-test split
+#https://pubmed.ncbi.nlm.nih.gov/33283143/
+
+
+colnames(response_data)
+
+
+
+```
+
+
+
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
