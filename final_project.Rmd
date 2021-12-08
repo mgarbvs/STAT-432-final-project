@@ -3,15 +3,15 @@ title: "Final Project Document"
 author: "Duyen Ho, Michael Garbus, Christina Hu"
 date: "12/6/2021"
 output:
+  html_document:
+    toc: yes
+    toc_depth: '2'
+    df_print: paged
   pdf_document:
     includes:
       in_header: header.tex
     toc: yes
     toc_depth: 2
-  html_document:
-    toc: yes
-    toc_depth: '2'
-    df_print: paged
 urlcolor: blue
 ---
 
@@ -31,11 +31,21 @@ The goal of this project is to find the most accurate model using a variety of s
 
 # Literature Review
 
-[paste from Michael]
+We consulted some research involving the subject to guide us in our modelling. The Wisconsin Breast Cancer dataset was used, which involves a digitized image of a fine needle aspirate (FNA) of a breast mass, which describe the characteristics of the cell nuclei present in the image. Unfortunately, this is rather different from our current data, which contains a sample of genetic data instead of a picture of cell data. However, we still feel that their approaches can be useful for our data, as they are predicting binary outcomes on a similar subject matter.
 
-# Summary Statistics and Data Processing
+The first study considered was "Breast Cancer Prediction: A Comparative Study Using Machine
+Learning Techniques", published in 2020 by Islam, M.M. et al. in SN Computer Science.  The paper compares 5 different supervised machine learning techniques (support vector machine, K-nearest neighbors, random forests, artificial neural networks, and finally, logistic regression.)  They performed little preprocessing on the data, as they only removed 16 NA variables. They divided the data into test and train sets, and used a 10-fold cross validation, with nine-fold used for training and the remaining fold used for testing. The results revealed that ANNs return the highest accuracy ($98.57\%$), KNN and SVM came second ($97.1\%$), and random forests and logistic regression came third, clocking in with an accuracy of $95.71\%$ for the two models. ANNs also achieved the highest specificity ($96\%$), whereas SVM achieved the lowest, at around $92.3\%$. KNN and random forest had a specificity of $98.53\%$, whereas logistic regression had a specificity of $95.65\%$. ANN and SVM achieved the highest sensitivity, clocking in at exactly $100\%$. This made SVM and ANN very attractive to us when considering our model selection. KNN had a sensitivity of $97.82\%$, Random Forest had a sensitivity of $95.65\%$, and logistic regression had a sensitivity of $95.74\%$.
 
-[add more from Duyen]
+However, the highest values for AUC were KNN and a random forest model, both achieving an AUC of $99\%$. The technology that they used for this study was Python's scikit-learn. 
+
+In the discussion of related works, the authors mentioned another study which received a $98.83%$ accuracy for a boosted trees random forest model, which inspired us to test gradient boosted trees for the final part of the project, as they will be able to determine which features are important, and hopefully cut down on features as well.
+
+A similar study, "Using Machine Learning Algorithms for Breast Cancer Risk
+Prediction and Diagnosis", published in 2016 by Asri, et al in Procedia Computer Science 83 tested SVM, decision tree (C 4.5, a technique avaliable in the open source WEKA data analysis tool), Naive Bayes, as well as KNN on the same UCI Breast Cancer dataset. Asri et al. discovered that although SVM took the longest time to create a model, it resulted in the highest accuracy, which is a different result to the previous model we studied. 
+
+While we do not believe that time constraints will be important in regards to our model as we are trying to achieve a high level of classification, it is interesting that these values are different. We imagine that this may be due to a difference in tools used, or perhaps, in the kernel used for the SVM classification. Additionally, the study also found that SVM had the highest AUC value on the ROC curve. For these reason, we decided to use SVM for our model.
+
+# Summary Statistics and Data Processing 
 
 ```{r}
 library(dplyr)
@@ -45,29 +55,56 @@ brca_data = brca_data %>% select(-c("X.1", "X"))
 # head(brca_data, 10)
 ```
 
+•	705 observations (breast cancer samples)
 
-Structure of data:
+•	1936 variables/predictors (4 different omics data types)
+
+#[1:604] are rn - gene expressions 604 <- categorical data
+
+#[605:1464] are cn - copy number variations 860 
+
+#[1465:1713] are mu - somatic mutations 249 <- categorical data
+
+#[1714:1936] are pp - protein expression 223
+
+•	4 outcomes [1937:1940] 
+
+•	There was no missing value in the entire dataset, so there’s no missing values in the continuous predictors
+
+*Make sure brca_org is the original data but without ‘vital.status'*
 ```{r}
-#str(brca_data)
+#sum(colSums(is.na(brca_org)))
 ```
 
-PR.Status, ER.Status, and HER2.Final.Status are determined using immunohistochemistry scoring. For these variables, we will only consider two levels: “Positive” and “Negative”. For histological.type, we will only consider “infiltrating lobular carcinoma” and “infiltrating ductal carcinoma”. You can treat all other categories as missing values. Hence, all four outcomes should be binary.
-
-```{r}
-which(colnames(brca_data)=="PR.Status")
-which(colnames(brca_data)=="ER.Status")
-which(colnames(brca_data)=="HER2.Final.Status")
-which(colnames(brca_data)=="histological.type")
+•	There were some outliers in the continuous predictors, I just did a quick test on the cn variables. But we decided to keep them as they are and filter out the dataset later on with the correlation matrix
+```{r,eval=FALSE }
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+    qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
+    H <- 1.5 * IQR(x, na.rm = na.rm)
+    y <- x
+    y[x < (qnt[1] - H)] <- NA
+    y[x > (qnt[2] + H)] <- NA
+    y
+}
+cont1 <- as.numeric(unlist(brca[605:1464]))
+sum(remove_outliers(cont1))
 ```
 
 
-Check for null values:
-```{r}
-colSums(is.na(brca_data[, 1937:1940]))
+•	My group wants to focus on filtering out the unsignificant continuous variables first, so we used correlation matrix method. Then we drop the columns that are highly correlated.
+
+#Use correlation matrix
+```{r, eval=FALSE}
+cor_mat = cor(non_categorical_brca)
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+non_categorical_brca =  non_categorical_brca[, -c(cor_list)]
+library(vtable)
+st(non_categorical_brca)
 ```
 
+````````````````````````````````````
 
--- check for closely correlated variables and leave only one
 
 ```{r}
 suppressMessages(library(caret))
@@ -82,23 +119,6 @@ brca_data = brca_data %>% select(-c("PR.Status", "ER.Status", "HER2.Final.Status
 #cor_mat = cor(brca_data)
 ```
 
-```{r}
-# returns vector of indices to remove
-#cor_list = findCorrelation(cor_mat, cutoff = .8)
-```
-
-Drop the highly correlated columns
-```{r}
-#brca_data =  brca_data[, -c(cor_list)]
-#brca_data
-```
-We still have 1087 col left...
-
-```{r}
-# categorical variables
-# brca_data[605:1464]
-# brca_data[1465:1713]
-```
 
 ```{r}
 # only use variances using the corr mat
@@ -115,9 +135,6 @@ cor_list = findCorrelation(cor_mat, cutoff = .7)
 non_categorical_brca =  non_categorical_brca[, -c(cor_list)]
 ```
 
-```{r}
-# non_categorical_brca
-```
 
 # Modeling PR.Status
 
@@ -377,7 +394,7 @@ corr_colnames <- colnames(M)[significant_correlation]
 ```
 
 
-```{r}
+```{r, warning=FALSE}
 suppressMessages(library(caret))
 # Linear regression model with selected features, 10 K-fold cross validation using the "caret" package --------------
 set.seed(432)
