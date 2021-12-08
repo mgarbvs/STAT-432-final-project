@@ -3,32 +3,20 @@ title: "Final Project Document"
 author: "Duyen Ho, Michael Garbus, Christina Hu"
 date: "12/6/2021"
 output:
+  pdf_document:
+    includes:
+      in_header: header.tex
+    toc: yes
+    toc_depth: 2
   html_document:
+    toc: yes
     toc_depth: '2'
     df_print: paged
-  pdf_document:
-    toc_depth: 2
 urlcolor: blue
 ---
 
-<center>
-
-{#id .class width=15%, height=15%}
-
-
-![UIUC Logo](images/1200px-University_of_Illinois_seal.svg.png)\
-
-
-
-</center>
-
-
-
 
 \newpage
-
-
-
 
 
 ```{r setup, include=FALSE}
@@ -54,7 +42,7 @@ library(dplyr)
 brca_data = read.csv("https://raw.githubusercontent.com/mgarbvs/STAT-432-final-project/main/cleaned_brca_data.csv")
 # remove X.1 and X columns
 brca_data = brca_data %>% select(-c("X.1", "X"))
-head(brca_data, 10)
+# head(brca_data, 10)
 ```
 
 
@@ -108,8 +96,8 @@ We still have 1087 col left...
 
 ```{r}
 # categorical variables
-brca_data[605:1464]
-brca_data[1465:1713]
+# brca_data[605:1464]
+# brca_data[1465:1713]
 ```
 
 ```{r}
@@ -167,7 +155,7 @@ for(i in 1:length(k_vals)) {
 }
 ```
 
-Next, we will plot the graph of the classification erros for each k-value and see if we can use the result to determine the best k:
+Next, we will plot the graph of the classification errors for each k-value and see if we can use the result to determine the best k:
 
 ```{r}
 plot(k_vals, err_vals, type = "l", xlab = "k-value", ylab = "Classification Error")
@@ -181,7 +169,7 @@ Next, use K=5 to create our KNN model and display the confusion matrix:
 set.seed(432)
 train_y = as.matrix(predictors$PR.Status[train_ind])
 y = as.matrix(predictors$PR.Status[train_ind])
-pred = knn.fit = knn(train = brca_train, test = brca_test, cl = y, k = 5)
+pred = knn(train = brca_train, test = brca_test, cl = y, k = 5)
 cmat = table(pred, as.factor(predictors$PR.Status[-train_ind]))
 cmat
 ```
@@ -236,25 +224,109 @@ To summarize the model predictions for `PR.Status`, we used KNN and Lasso models
 
 # Modelling `histological.type`
 
-Next, let us model `histological.type`, using AUC as the evaluation criterion. 
+Next, let us model `histological.type`, using AUC as the evaluation criterion. For both models that we chose to model `histological.type` with, we decided to use ALL of the categorical and non-categorical predictors to see if we could get a more accurate result. 
 
 ## Modelling `histological.type` with SVM
 
-[Insert Michael's SVM]
+```{r}
+# SVM, histological type
+library(ROCR)
+library(e1071)
+library(caret)
 
-## Modelling `histological.type` with Kernel
+brca_data = read.csv("https://raw.githubusercontent.com/mgarbvs/STAT-432-final-project/main/cleaned_brca_data.csv")
+# remove X.1 and X columns
+brca_data = brca_data %>% select(-c("X.1", "X"))
+non_response_brca <- brca_data[,-c(which(colnames(brca_data) %in% c('PR.Status','ER.Status','HER2.Final.Status','histological.type')))]
 
-Next, let us use a Kernel Regression model:
+set.seed(432)
+
+#SVM WITH MATCORR DATA
+
+# use correlation matrix
+cor_mat = cor(non_response_brca)
+
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+non_response_brca <- non_response_brca[,cor_list]
+
+#New BRCA data
+
+train = brca_data$histological.type
+train_data_unsplit = cbind(train,non_response_brca)
+#continue to use the combined 10 data? or use the full data
+
+#train_data_unsplit[,'train']  1 and 2
+#80 20 split
+train_rows <- sample(nrow(train_data_unsplit), size = floor(0.8 *nrow(train_data_unsplit)))
+train_data <- train_data_unsplit[train_rows,]
+test_data = train_data_unsplit[-train_rows,]
+
+#Let's consider a few different kernels
+#Sigma is the distance from the boundary
+#Do we want a high cost? Or a low one?
+
+svm.radial <- train(train ~ ., data = train_data, method = "svmRadial",
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(C = c(0.01, 0.1, 0.5, 1), sigma = c(1, 2, 3)),
+                trControl = trainControl(method = "cv", number = 5))
+
+
+svm.linear <- train(train ~ ., data = train_data, method = 'svmLinear',
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(C = c(0.01, 0.1, 0.5, 1)),
+                trControl = trainControl(method = "cv", number = 5))
+```
+
+Let us display the SVM results for radial and linear models respectively:
+```{r}
+svm.radial
+svm.linear
+```
+
+Next, we will use each model to predict on the test data
+```{r}
+suppressMessages(library(kableExtra))
+linear_svm_prediction <- predict(svm.linear, test_data[,-1])
+
+radial_svm_prediction <- predict(svm.radial, test_data[,-1])
+
+#Radial --> unable to classify any infiltrating lobular carcinoma. Linear is the better model
+suppressMessages(library(ROCR))
+
+lin.svm <- prediction(as.numeric(as.factor(linear_svm_prediction)), as.factor(test_data[,1]))
+
+rad.svm <- prediction(as.numeric(as.factor(radial_svm_prediction)), as.factor(test_data[,1]))
+```
+
+Finally, let us display the results of the Linear and Radial SVM AUC:
+```{r}
+# Linear has a performance of about 65.98%
+performance(lin.svm,measure = "auc")@y.values[[1]]
+# Radial has performance of about 50%
+performance(rad.svm,measure = "auc")@y.values[[1]]
+```
+
+Looking at the results above, Linear SVM has AUC = `r performance(lin.svm,measure = "auc")@y.values[[1]]` and Radial SVM has AUC = `r `performance(rad.svm,measure = "auc")@y.values[[1]]`. We can conclude that Linear SVM is probably the better model due to this significant difference.
+
+## Modelling `histological.type` with Random Forests
+
+Next, let us use a Random Forest model:
+```{r}
+train_y_hist= as.matrix(predictors$histological.type[train_ind])
+brca_train_2 = as.matrix(cbind(brca_train, train_y_hist))
+```
+
+Let us fit the model with `nodesize=8` and `sampsize=50`. Through multiple rounds of experimentation with values, we found those parameters to be most optimal:
 ```{r}
 suppressMessages(library(randomForest))
 set.seed(432)
-rf.fit = randomForest(data.matrix(brca_train_2[, -c(640)]), y = as.factor(brca_train_2[, 640]), ntree = 4, mtry = 4, nodesize = 10, sampsize = 50)
+rf.fit = randomForest(data.matrix(brca_train_2[, -c(640)]), y = as.factor(brca_train_2[, 640]), ntree = 4, mtry = 4, nodesize = 8, sampsize = 50)
 ```
 
 Next, use this model to predict on the test data:
 ```{r}
-library(ROCR)
-library(pROC)
 test.predictions <- predict(rf.fit, type="prob", newdata=brca_test)[,2]
 
 correct_hist = as.factor(predictors$histological.type[-train_ind])
@@ -267,9 +339,10 @@ The AUC:
 ```{r}
 performance(rf_pr_test, measure = "auc")@y.values[[1]] 
 ```
+The `r performance(rf_pr_test, measure = "auc")@y.values[[1]] `. 
 
-this is bad
-
+### `histological.type` Summary:
+To summarize our models, we used Linear and Radial SVM, with had AUC values of `r performance(lin.svm,measure = "auc")@y.values[[1]]` and `r performance(rad.svm,measure = "auc")@y.values[[1]]` respectively. For random forest, the AUC value resulted in `r performance(rf_pr_test, measure = "auc")@y.values[[1]] `. Therefore, the random forest model can be determined as the better model, although its AUC score is still a bit low.
 
 
 # 50-Variable Selection
@@ -305,7 +378,7 @@ corr_colnames <- colnames(M)[significant_correlation]
 
 
 ```{r}
-library(caret)
+suppressMessages(library(caret))
 # Linear regression model with selected features, 10 K-fold cross validation using the "caret" package --------------
 set.seed(432)
 
@@ -339,9 +412,6 @@ summary(mod_fit)
 
 Compute and plot the AUC:
 ```{r}
-library(pROC)
-library(ROCR)
-
 test_y <- outcomes$PR.Status[-train_ind]
 pr_test <- cbind(test_y, pr_data[-train_ind, ])
 
@@ -429,9 +499,6 @@ summary(mod_fit)
 
 Compute and plot the AUC:
 ```{r}
-library(pROC)
-library(ROCR)
-
 test_y <- as.data.frame(outcomes$histological.type[-train_ind])
 
 dim(test_y)
@@ -484,7 +551,7 @@ table(significant_correlation)
 corr_colnames <- colnames(M)[significant_correlation]
 ```
 
-```{r}
+```{r, warning=FALSE}
 library(caret)
 
 set.seed(432)
@@ -574,7 +641,7 @@ table(significant_correlation)
 corr_colnames <- colnames(M)[significant_correlation]
 ```
 
-```{r}
+```{r, warning=FALSE}
 library(caret)
 
 set.seed(432)
@@ -611,9 +678,6 @@ summary(mod_fit)
 
 Compute and plot the AUC:
 ```{r}
-library(pROC)
-library(ROCR)
-
 test_y <- as.data.frame(outcomes$HER2.Final.Status[-train_ind])
 
 dim(test_y)
@@ -634,6 +698,16 @@ performance(roc, measure = "auc")@y.values[[1]]
 
 The AUC for HER2.Final.Status is 0.8743316
 
+Now, to select the actual 50-variables.
+
+1) Output all of the 50 predictor variables for each outcome
+
+```{r}
+
+```
+
+2) Generate a count for top ones
+3) pick the top 50 from there
 
 
 
