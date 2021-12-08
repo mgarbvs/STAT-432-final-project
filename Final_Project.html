@@ -330,7 +330,7 @@ cmat</code></pre>
 <p>Displaying the accuracy:</p>
 <pre class="r"><code>(cmat[1,1]+cmat[2,2])/sum(cmat)</code></pre>
 <pre><code>## [1] 0.8267717</code></pre>
-<p>The classificaton error for a model with k=5 is 0.1732283.</p>
+<p>The classificaton error for a model with k=5 is 1-0.8267717 = 0.1732283.</p>
 </div>
 <div id="modeling-with-lasso-predict-pr.status" class="section level2">
 <h2>Modeling with Lasso (predict PR.Status)</h2>
@@ -357,7 +357,7 @@ cmat_1</code></pre>
 <p>Displaying the accuracy:</p>
 <pre class="r"><code>(cmat_1[1,1]+cmat_1[2,2])/sum(cmat_1)</code></pre>
 <pre><code>## [1] 0.8503937</code></pre>
-<p>The classification error is 0.1496063</p>
+<p>The classification error is 1-0.8503937 = 0.1496063.</p>
 <div id="pr.status-summary" class="section level3">
 <h3><code>PR.Status</code> Summary:</h3>
 <p>To summarize the model predictions for <code>PR.Status</code>, we used KNN and Lasso models to predict the outcome. We only used non-categorical data for both instances since the categorical variables gave many errors while we were in the process of fitting the models. However, even without the categorical predictors, both models yielded relatively low classification errors, with the KNN model (using k=8) having a classification error of 0.1732283 and the Lasso model having a classification error of 0.1496063. Looking at these results, the Lasso model would be better suited to predict <code>PR.Status</code>.</p>
@@ -466,7 +466,7 @@ svm.linear &lt;- train(train ~ ., data = train_data, method = &#39;svmLinear&#39
 ## 
 ## Accuracy was used to select the optimal model using the largest value.
 ## The final value used for the model was C = 0.01.</code></pre>
-<p>Next, we will use each model to predict on the test data</p>
+<p>Next, we will use each model to predict on the test data:</p>
 <pre class="r"><code>suppressMessages(library(kableExtra))
 linear_svm_prediction &lt;- predict(svm.linear, test_data[,-1])
 
@@ -485,7 +485,7 @@ performance(lin.svm,measure = &quot;auc&quot;)@y.values[[1]]</code></pre>
 <pre class="r"><code># Radial has performance of about 50%
 performance(rad.svm,measure = &quot;auc&quot;)@y.values[[1]]</code></pre>
 <pre><code>## [1] 0.5</code></pre>
-<p>Looking at the results above, Linear SVM has AUC = 0.6598402 and Radial SVM has AUC = <code>r</code>performance(rad.svm,measure = “auc”)<span class="citation">@y.values [[1]]</span>`. We can conclude that Linear SVM is probably the better model due to this significant difference.</p>
+<p>Looking at the results above, Linear SVM has AUC = 0.6598402 and Radial SVM has AUC = 0.5. We can conclude that Linear SVM is probably the better model due to this significant difference.</p>
 </div>
 <div id="modelling-histological.type-with-random-forests" class="section level2">
 <h2>Modelling <code>histological.type</code> with Random Forests</h2>
@@ -660,7 +660,7 @@ plot(perf,colorize=TRUE)</code></pre>
 <pre class="r"><code># obtaining the AUC
 performance(roc, measure = &quot;auc&quot;)@y.values[[1]] </code></pre>
 <pre><code>## [1] 0.8989979</code></pre>
-<p>The AUC for PR.Status is 0.8989979</p>
+<p>The AUC for PR.Status is 0.8989979.</p>
 </div>
 <div id="histological.type" class="section level2">
 <h2>Histological.Type</h2>
@@ -718,18 +718,6 @@ mod_fit &lt;- train(as.factor(histological.type) ~ ., data=hist_train,
                  family=&quot;binomial&quot;,
                  trControl = ctrl,
                  tuneLength = 5)</code></pre>
-<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>## Warning in predict.lm(object, newdata, se.fit, scale = 1, type = if (type == :
-## prediction from a rank-deficient fit may be misleading</code></pre>
-<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>## Warning: glm.fit: algorithm did not converge</code></pre>
-<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
 <pre class="r"><code>summary(mod_fit)</code></pre>
 <pre><code>## 
 ## Call:
@@ -821,7 +809,7 @@ plot(perf,colorize=TRUE)</code></pre>
 <pre class="r"><code># obtaining the AUC
 performance(roc, measure = &quot;auc&quot;)@y.values[[1]] </code></pre>
 <pre><code>## [1] 0.9318182</code></pre>
-<p>The AUC for histological.type is 0.9318182</p>
+<p>The AUC for histological.type is 0.9318182.</p>
 </div>
 <div id="er.status" class="section level2">
 <h2>ER.Status</h2>
@@ -978,7 +966,7 @@ plot(perf,colorize=TRUE)</code></pre>
 <pre class="r"><code># obtaining the AUC
 performance(roc, measure = &quot;auc&quot;)@y.values[[1]] </code></pre>
 <pre><code>## [1] 0.8281441</code></pre>
-<p>The AUC for ER.Status is 0.9318182</p>
+<p>The AUC for ER.Status is 0.8281441.</p>
 </div>
 <div id="her2.final.status" class="section level2">
 <h2>HER2.Final.Status</h2>
@@ -1128,7 +1116,7 @@ plot(perf,colorize=TRUE)</code></pre>
 <pre class="r"><code># obtaining the AUC
 performance(roc, measure = &quot;auc&quot;)@y.values[[1]] </code></pre>
 <pre><code>## [1] 0.8743316</code></pre>
-<p>The AUC for HER2.Final.Status is 0.8743316</p>
+<p>The AUC for HER2.Final.Status is 0.8743316.</p>
 <p>Now, to select the actual 50-variables.</p>
 <ol style="list-style-type: decimal">
 <li><p>Output all of the 50 predictor variables for each outcome</p></li>
