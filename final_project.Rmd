@@ -822,46 +822,24 @@ To summarize our models, we used Linear and Radial SVM, with had AUC values of `
 ```{r}
 library(utiml)
 library(mldr)
+library(kableExtra)
 # Create two partitions (train and test) of toyml multi-label dataset
 #with_factors 
 factor_data <- cbind(non_response_brca[1:50],response_data_n)
 my_mldr <- mldr_from_dataframe(factor_data, labelIndices = c(51:54))
 
-#mldr('factor_data.csv', auto_extension = F, force_read_from_file = T)
-ds <- create_holdout_partition(my_mldr, c(train=0.65, test=0.35))
-# Create a Binary Relevance Model using e1071::svm method
-xgbmodel <- br(ds$train, "XGB", seed=432, cores = 1, eta = 0.3, nrounds = 50, eval_metric = "auc")
-# Predict
-prediction_xgb <- predict(xgbmodel, ds$test)
-# Show the predictions
-#head(as.bipartition(prediction_xgb))
-#head(as.ranking(prediction_xgb))
-confmat <-  multilabel_confusion_matrix(ds$test, prediction_xgb)
-# Apply a threshold
-newpred <- rcut_threshold(prediction_xgb, 2)
-# Evaluate the models
-result_xgb <- multilabel_evaluate(ds$tes, prediction_xgb, c("macro-based", "micro-based"))
-# Print the result
-xgb_result <- result_xgb[c(1,5)]
+#Keep as BR to ignore between labels!!!
+svm_results <- cv(my_mldr, br, base.algorith="SVM", seed=432, kernel = "linear", cost = 0.6, cv.folds=3, cv.sampling="random", cv.measures=c("macro-based", "micro-based"), cv.seed=432,cv.results=TRUE)
 
-svmmodel <- br(ds$train, "SVM", seed=432, kernel = "linear", cost = 0.6)
-# Predict
-prediction <- predict(svmmodel, ds$test)
-newpred <- rcut_threshold(prediction, 2)
-result <- multilabel_evaluate(ds$tes, prediction, c("macro-based", "micro-based"))
-#thresres <- multilabel_evaluate(ds$tes, newpred, "bipartition")
-svm_result <-result[c(1,5)]
+xgb_results <- cv(my_mldr, br, base.algorith="XGB", seed=432, cores = 1, eta = 0.3, nrounds = 50, eval_metric = "auc", cv.folds=3, cv.sampling="random", cv.measures=c("macro-based", "micro-based"), cv.seed=432,cv.results=TRUE)
 
-svm_result
-xgb_result
-library(randomForest)
-svmmodel <- br(ds$train, "KNN", seed=432, k = 15)
-# Predict
-prediction <- predict(svmmodel, ds$test)
-newpred <- rcut_threshold(prediction, 2)
-result <- multilabel_evaluate(ds$tes, prediction, c("macro-based", "micro-based"))
-#thresres <- multilabel_evaluate(ds$tes, newpred, "bipartition")
-svm_result <-result[c(1,5)]
-svm_result
+svm_final_result <-rbind(svm_results$multilabel[,c(1,5)],colMeans(svm_results$multilabel[,c(1,5)]))
+svfr <- as.table(svm_final_result)
+
+kable(svfr)
+
+
+
+
 ```
 
