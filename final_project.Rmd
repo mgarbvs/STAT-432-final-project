@@ -23,10 +23,23 @@ urlcolor: blue
 
 
 
+<<<<<<< HEAD
 \newpage
+=======
+However, the highest values for AUC were KNN and a random forest model, both achieving an AUC of $99\%$. 
+>>>>>>> 15f97385675b2099e3ad2c2384813a6fe4d81b21
 
 
+<<<<<<< HEAD
 
+=======
+A similar study, "Using Machine Learning Algorithms for Breast Cancer Risk
+Prediction and Diagnosis", published in 2016 by Asri,H. et al in Procedia Computer Science 83 tested SVM, decision tree (C 4.5, a technique available in the open source WEKA data analysis tool), Naive Bayes, as well as KNN on the same UCI Breast Cancer dataset, with a focus on accuracy. Asri et al. discovered that although SVM took the longest time to create a model, it resulted in the highest accuracy of $97.54\%$,  which is a different result to the previous model we studied. 
+
+While I do not believe that time constraints will be important in regards to our model as we are trying to achieve a high level of classification, it is interesting that these values are different. I imagine that this may be due to a difference in tools used, or perhaps, in the kernel used for the SVM classification. Additionally, the study also found that SVM had the highest AUC value on the ROC curve ($99\%$). For these reason, we decided to use SVM for our model.
+
+For the creation of our final model, we consulted some literature on predicting in medical data. We found "Predicting Missing Values in Medical Data via XGBoost Regression", from Zhang et al. Because of this model, as well as discussion in Islam et al., we decided to consider XGBoost. Fortunately, XGBoost is able to use AUC values as its objective function. We decided to use a multi-label machine learning tool, `utiml`, so we would be able to predict all four labels from our 50 predictors. Serendipitously, this library is very similar to the WEKA tool used in Asri et al. which led us to consider using SVM for this application as well. Fortunately, the `utiml` package uses the package we used for SVM in this class, `e1071`. After further analysis, SVM was selected.
+>>>>>>> 15f97385675b2099e3ad2c2384813a6fe4d81b21
 
 
 ```{r setup, include=FALSE}
@@ -656,7 +669,33 @@ The AUC for HER2.Final.Status is 0.8743316
 
 
 
+<<<<<<< HEAD
 
 
 
+=======
+```{r}
+library(utiml)
+library(mldr)
+library(kableExtra)
+# Create two partitions (train and test) of toyml multi-label dataset
+#with_factors 
+factor_data <- cbind(non_response_brca[1:50],response_data_n)
+my_mldr <- mldr_from_dataframe(factor_data, labelIndices = c(51:54))
+
+#Keep as BR to ignore between labels!!!
+svm_results <- cv(my_mldr, br, base.algorith="SVM", seed=432, kernel = "linear", cost = 0.6, cv.folds=3, cv.sampling="random", cv.measures=c("macro-based", "micro-based"), cv.seed=432,cv.results=TRUE)
+
+xgb_results <- cv(my_mldr, br, base.algorith="XGB", seed=432, cores = 1, eta = 0.3, nrounds = 50, eval_metric = "auc", cv.folds=3, cv.sampling="random", cv.measures=c("macro-based", "micro-based"), cv.seed=432,cv.results=TRUE)
+
+svm_final_result <-rbind(svm_results$multilabel[,c(1,5)],colMeans(svm_results$multilabel[,c(1,5)]))
+svfr <- as.table(svm_final_result)
+
+kable(svfr)
+
+
+
+
+```
+>>>>>>> 15f97385675b2099e3ad2c2384813a6fe4d81b21
 

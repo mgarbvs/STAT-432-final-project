@@ -1,0 +1,358 @@
+---
+title: "Summary statistics"
+author: "Duyen Ho"
+date: "11/7/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("~/Desktop/Courses/432finalproject")
+brca <- read.csv('~/Desktop/Courses/432finalproject/brca_data_w_subtypes.csv')
+brca <- brca[,-1937]
+brca <- brca[((brca$histological.type == "infiltrating lobular carcinoma") | (brca$histological.type == "infiltrating ductal carcinoma")) & ((brca$HER2.Final.Status == "Positive") | (brca$HER2.Final.Status == "Negative")) & ((brca$ER.Status == "Positive") | (brca$ER.Status == "Negative")) & ((brca$PR.Status == "Positive") | (brca$PR.Status == "Negative")),]
+
+dim(brca)
+
+```
+
+
+```{r}
+variances <- apply(brca, MARGIN=2, FUN=var)
+```
+
+
+```{r}
+#correlation percentage 
+#pick top 10% var for rn and pp
+#15%,10%
+#modelling,lda,same model,different input, knn
+
+data <- read.csv('cleaned_brca_data.csv')
+data <- data[,-1]
+data <- data[!(data$PR.Status)=="",]
+#[1:604] are rn - gene expressions 604
+#[605:1464] are cn - copy number variations 860
+#[1465:1713] are mu - somatic mutations 249
+#[1714:1936] are pp - protein expression 223
+#[1937:1940] are 4 outcomes
+```
+
+```{r}
+#Get the top 10% variances variables for rn
+variances_rn <- apply(brca[1:604], MARGIN=2, FUN=var)
+sorted_rn <- sort(variances_rn, decreasing=TRUE, index.return=TRUE)$ix[1:60]
+var_rn <- brca[, sorted_rn]
+var_rn <-as.data.frame(var_rn)
+rn_range <- t(sapply(var_rn,range))
+#library(Hmisc)
+#hist.data.frame(var_rn)
+```
+
+```{r}
+#Get the top 10% variances variables for pp
+variances_pp <- apply(brca[1714:1936], MARGIN=2, FUN=var)
+sorted_pp <- sort(variances_pp, decreasing=TRUE, index.return=TRUE)$ix[1:22]
+var_pp <- brca[, sorted_pp]
+var_pp <-as.data.frame(var_pp)
+pp_range <- t(sapply(var_pp,range))
+```
+
+```{r}
+# only use variances using the corr mat
+non_categorical_brca = cbind(brca[1:604], brca[1714:1936])
+# use correlation matrix
+cor_mat = cor(non_categorical_brca)
+
+# returns vector of indices to remove
+library(caret)
+cor_list = findCorrelation(cor_mat, cutoff = .8)
+
+non_categorical_brca = non_categorical_brca[, -c(cor_list)]
+
+categorical <- cbind(brca[605:1464], brca[1465:1713])
+var_data <- cbind(var_rn,var_pp,categorical,brca[1937:1940])
+num_data <- cbind(var_rn,var_pp,brca[1937:1940])
+dim(num_data)
+library(vtable)
+st(num_data)
+
+```
+
+
+##KNN & Lasso
+
+```{r}
+set.seed(432)
+#Splitting data 80/20
+size <- floor(0.8*nrow(num_data))
+#obtain row number
+train <- sample(seq_len(nrow(num_data)),size=size)
+#Labels
+train_lab <- num_data[train, 83]
+test_lab <- num_data[-train]
+#Data
+training <- num_data[train, 1:83]
+testing <- num_data[-train, 1:83]
+```
+
+
+```{r}
+#Perform Lasso on your data to predict PR.Status
+library(glmnet)
+library(ElemStatLearn)
+PR_pos<-as.numeric(ifelse(num_data$PR.Status=="Positive",1,0))
+lasso.fit = cv.glmnet(data.matrix(num_data[, -83]), PR_pos)
+#Best tuning parameter
+lasso.fit$lambda.min
+par(mfrow = c(1, 2))
+plot(lasso.fit)
+plot(lasso.fit$glmnet.fit, "lambda")
+coef(lasso.fit, s = "lambda.min")
+```
+
+
+```{r}
+#Michael's Lasso
+set.seed(432)
+library(glmnet)
+train_lasso_fit <- cv.glmnet(data.matrix(num_data[, 1:82]), PR_pos, nfolds = 10, alpha = 1, type.measure = "class") 
+#Using split with lasso/ridge
+best_lambda = train_lasso_fit$lambda.min 
+#most nonzero
+plot(train_lasso_fit)
+predict(train_lasso_fit, testing[,-83], s = best_lambda, type = "coefficients")
+
+#no cv, i think cv is only avaliable for gaussians.
+train_lasso_no_cv <- glmnet(x = training[,-83], y = training[,83], family = "binomial")
+lowest_lambda <- min(train_lasso_no_cv$lambda)
+test_predict_la <- predict(train_lasso_no_cv, data.matrix(testing[, -83]), s = lowest_lambda, type = "class")
+
+table(data.matrix(testing[, 83]), test_predict_la)
+
+(25+55)/(25+55+22)
+```
+
+```{r}
+#Perform KNN on your data to predict PR.Status
+library(caret)
+library(class)
+control <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
+  
+set.seed(432)
+knn.cvfit <- train(y ~ ., method = "knn", 
+                     data = data.frame("x" = training[, -83], "y" = as.factor(training[, 83])),
+                     tuneGrid = data.frame(k = seq(1, 10, 1)),
+                     trControl = control)
+knn.cvfit
+
+plot(knn.cvfit$results$k, 1-knn.cvfit$results$Accuracy,
+       xlab = "K", ylab = "Classification Error", type = "b",
+       pch = 19, col = "darkorange")
+
+testpred = knn(train = training[, -83], test= testing[, -83], cl = as.factor(training[, 83]), k = 9)
+  
+table(testpred, as.factor(testing[, 83]))
+(21+63)/(21+63+18)
+```
+
+
+##Modeling histological.type-SVM
+
+```{r}
+library(e1071)
+set.seed(432)
+
+# Construct sample data set - completely separated
+x <- matrix(rnorm(40), ncol = 2)
+y <- c(rep(-1,10), rep(1,10))
+x[y==1,] <- x[y==1,] + 3/2
+dat <- data.frame(x=x, y=as.factor(y))
+```
+
+```{r}
+library(e1071)
+library(dplyr)
+#Remove duplicated columns
+num_dataa <- num_data[!duplicated(as.list(num_data))]
+# Convert character vector to factor
+num_dataa$histological.type<-as.factor(num_dataa$histological.type)                       
+#Run SVM
+svm1<-svm(histological.type~.,data=num_dataa,kernel='radial', scale=FALSE, cost = 10000)
+summary(svm1)
+
+predsvm <- predict(svm1, num_dataa)
+tabsvm <- table(Predicted=predsvm, Actual=num_dataa$histological.type)
+#Confusion matrix
+tabsvm
+
+length(num_data$histological.type[num_data$histological.type=='infiltrating ductal carcinoma'])
+length(num_data$histological.type[num_data$histological.type=='infiltrating lobular carcinoma'])
+
+#Accuracy for linear
+(420+29)/507
+
+#Accuracy for radial, polynomial
+(457+50)/507
+
+#Accuracy for sigmoid
+(457+0)/507
+
+tabsvm
+#Misclassification rate
+1-sum(diag(tabsvm))/sum(tabsvm)
+
+```
+
+```{r}
+set.seed(432)
+library(glmnet)
+#train_lasso_fit <- cv.glmnet(data.matrix(num_data[, 1:82]), PR_pos, nfolds = 10, alpha = 1, type.measure = "class") 
+
+#best_lambda = train_lasso_fit$lambda.min
+#test_predict = predict(train_lasso_fit, testing[,-83], s = best_lambda, type = "class")
+# test_predict
+# length(test_predict)
+# length(predictors$PR.Status[-train_ind])
+#cmat_1 = table(predictors$histological.type[-train_ind], test_predict)
+```
+
+
+##Variable selection
+```{r}
+# ensure results are repeatable
+set.seed(432)
+# load the library
+library(mlbench)
+library(caret)
+
+#Dataset for PR.Status
+PR_only <- var_data[,-c(1193:1195)]
+PR_only$PR.Status <- as.factor(PR_only$PR.Status)
+#Predict PR.Status
+model <- lm(PR.Status ~ ., data = PR_only)
+
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# train the model
+model <- train(PR.Status~., data=PR_only, method="lvq", preProcess="scale", trControl=control)
+
+
+
+
+#drop duplicated columns
+var_data <- var_data[, !duplicated(colnames(var_data))]
+#factor outcome columns
+var_data$PR.Status <- as.factor(var_data$PR.Status)
+var_data$ER.Status <- as.factor(var_data$ER.Status)
+var_data$HER2.Final.Status <- as.factor(var_data$HER2.Final.Status)
+var_data$histological.type <- as.factor(var_data$histological.type)
+
+outcome_f <- sapply(var_data[,1186:1189],as.factor)
+outcome_n <- data.frame(sapply(var_data[,1186:1189], function(x) as.numeric(as.factor(x)) - 1))
+
+predictors <- var_data[,-c(1186:1189)]
+train1 <- sample(nrow(predictors), size = floor(0.8 *nrow(predictors )))
+train_data_pred <- predictors[train1,]
+train_data <- as.matrix(train_data_pred)
+test_data_pred <- predictors[-train1,]
+
+outcome_n_train <- outcome_n[train1,]
+outcome_n_test <- outcome_n[-train1,]
+
+## Random Forest Method
+library(randomForest)
+test <- randomForest(PR.Status ~., var_data, importance=T)
+importance(test)
+# get variable importance, based on mean decrease in accuracy
+varImp(test)
+# conditional=True, adjusts for correlations between predictors
+varImp(test, conditional=TRUE)
+# more robust towards class imbalance.
+library(varImp)
+varimpAUC(test) 
+```
+```{r}
+#MARS (earth package) Method
+
+#The earth package implements variable importance based on Generalized cross validation (GCV), number of subset models the variable occurs (nsubsets) and residual sum of squares (RSS).
+library(earth)
+# fit lm() model
+regressor <- earth(PR.Status ~ . , data=var_data) 
+
+ev <- evimp(regressor)# calculate relative importance scaled to 100
+plot(ev)
+```
+
+
+
+```{r}
+library(party)
+set.seed(432)
+#Conditional rainforest
+fore <- cforest(PR.Status ~ ., data = var_data, 
+       control = cforest_unbiased(mtry = 2, ntree = 50))
+
+varimp(fore)
+
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
+plot(importance)
+imp2 <- varImp.RandomForest(model,scale=FALSE)
+
+full <- cbind(categorical,num_data[,-c(84:86)])
+full$PR.Status <- as.factor(full$PR.Status)
+model1 <- train(PR.Status~., data=full, method="lvq", preProcess="scale", trControl=control)
+importance1 <- varImp(model1, scale=FALSE)
+print(importance1)
+plot(importance)
+```
+
+```{r}
+library(olsrr)
+PR_only <- num_data[,-c(84:86)]
+PR_only$PR.Status <- as.factor(PR_only$PR.Status)
+model <- lm(PR.Status ~ ., data = PR_only)
+ols_step_both_p(model, prem = 0.05,
+  progress = FALSE, details = FALSE)
+```
+
+```{r}
+# ensure results are repeatable
+set.seed(432)
+# load the library
+library(mlbench)
+library(caret)
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# train the model
+model <- train(PR.Status~., data=PR_only, method="lvq", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
+plot(importance)
+imp2 <- varImp.RandomForest(model,scale=FALSE)
+
+full <- cbind(categorical,num_data[,-c(84:86)])
+full$PR.Status <- as.factor(full$PR.Status)
+model1 <- train(PR.Status~., data=full, method="lvq", preProcess="scale", trControl=control)
+importance1 <- varImp(model1, scale=FALSE)
+print(importance1)
+plot(importance)
+```
+
+
+
+
+
+
+

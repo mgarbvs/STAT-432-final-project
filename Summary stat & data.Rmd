@@ -1,0 +1,72 @@
+---
+title: "Final Project Document"
+author: "Duyen Ho, Michael Garbus, Christina Hu"
+date: "12/7/2021"
+output:
+  pdf_document: default
+  html_document: default
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align="center")
+```
+
+\tableofcontents
+
+# Project Description and Summary 
+The goal of this project is to find the most accurate model using a variety of statistical model building techniques in order to predict medical outcomes relating to breast cancer. We will use the BRCA Multi-Omics (TCGA) data from Kaggle, and predict outcomes for the PR.Status, ER.Status, HER2.Final.Status, and histological.type. For our approach, we will first perform the necessary data cleaning operations, then [method 1] and [method2] to build classification models for PR.Status and [method1] and [method2] for histological.type, using classification error and AUC respectively as the evalution criteria. Next, we will use [method] to build a model with the goal of accurately predicting all four outcomes. Finally, [INSERT CONCLUSION HERE]
+
+# Summary Statistics and Data Processing 
+
+•	705 observations (breast cancer samples)
+
+•	1936 variables/predictors (4 different omics data types)
+
+#[1:604] are rn - gene expressions 604 <- categorical data
+
+#[605:1464] are cn - copy number variations 860 
+
+#[1465:1713] are mu - somatic mutations 249 <- categorical data
+
+#[1714:1936] are pp - protein expression 223
+
+•	4 outcomes [1937:1940] 
+
+•	There was no missing value in the entire dataset, so there’s no missing values in the continuous predictors
+
+*Make sure brca_org is the original data but without ‘vital.status'*
+```{r}
+#sum(colSums(is.na(brca_org)))
+```
+
+•	There were some outliers in the continuous predictors, I just did a quick test on the cn variables. But we decided to keep them as they are and filter out the dataset later on with the correlation matrix
+```{r,eval=FALSE }
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+    qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
+    H <- 1.5 * IQR(x, na.rm = na.rm)
+    y <- x
+    y[x < (qnt[1] - H)] <- NA
+    y[x > (qnt[2] + H)] <- NA
+    y
+}
+cont1 <- as.numeric(unlist(brca[605:1464]))
+sum(remove_outliers(cont1))
+```
+
+
+•	My group wants to focus on filtering out the unsignificant continuous variables first, so we used correlation matrix method. Then we drop the columns that are highly correlated.
+
+#Use correlation matrix
+```{r, eval=FALSE}
+cor_mat = cor(non_categorical_brca)
+# returns vector of indices to remove
+cor_list = findCorrelation(cor_mat, cutoff = .7)
+
+non_categorical_brca =  non_categorical_brca[, -c(cor_list)]
+
+library(vtable)
+st(non_categorical_brca)
+```
+
+
