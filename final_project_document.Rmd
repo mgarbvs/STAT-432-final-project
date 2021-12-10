@@ -33,7 +33,7 @@ h1, h4 {
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Project Description and Summary (NEED GOAL, APPROACH, and CONCLUSION AND THIS NEEDS TO BE ONE PAGE?!!?)
+# Project Description and Summary 
 
 The goal of this project is to find the most accurate model using a variety of statistical model building techniques in order to predict medical outcomes relating to breast cancer. We will use the BRCA Multi-Omics (TCGA) data from Kaggle, and predict outcomes for the `PR.Status`, `ER.Status`, `HER2.Final.Status`, and `histological.type`. 
 
@@ -61,6 +61,15 @@ Prediction and Diagnosis", published in 2016 by Asri,H. et al in Procedia Comput
 While we do not believe that time constraints will be important in regards to our model as we are trying to achieve a high level of classification, it is interesting that these values are different. We imagine that this may be due to a difference in tools used, or perhaps, in the kernel used for the SVM classification. Additionally, the study also found that SVM had the highest AUC value on the ROC curve ($99\%$). For these reason, we decided to use SVM for our model.
 
 For the creation of our final model, we consulted some literature on predicting in medical data. We found "Predicting Missing Values in Medical Data via XGBoost Regression", from Zhang et al. Because of this model, as well as discussion in Islam et al., we decided to consider XGBoost. Fortunately, XGBoost is able to use AUC values as its objective function. We decided to use a multi-label machine learning tool, `utiml`, so we would be able to predict all four labels from our 50 predictors. Serendipitously, this library is very similar to the WEKA tool used in Asri et al. which led us to consider using SVM for this application as well. Fortunately, the `utiml` package uses the package we used for SVM in this class, `e1071`. After further analysis, SVM was selected.
+
+In the paper “Supervised Risk Predictor of Breast Cancer Based on Intrinsic Subtypes” published in 2009 by many authors from multiple institutions, the authors focus on the approaches to improve on current standards for breast cancer prognosis and prediction of chemotherapy benefit by developing a risk model using gene expressions.
+Various methods were used such as Samples and Clinical Data, Microarray, Identification of Prototypical Intrinsic Subtype Samples and Genes, Sample Subtype Prediction. A standardized method of classification using a statistically derived gene and sample set validated across multiple cohorts was developed. They split training and testing data for patient cohorts. Their method is also to use microarray and quantitative reverse transcriptase polymerase chain reaction data to develop a 50-gene subtype predictor using data from prototype samples. In the end, they compared four different models for prediction of relapse and used C-index to compare the strength of the models. C-index is calculated for each test set to form the estimate of each model with two sample t test.
+They found that all the intrinsic subtypes are present and significant for outcome predictions in cohorts of patients diagnosed with ER tumors. Stratification of the subtypes within HER2clin-positive samples did not show significance in outcome predictions. And also, approximately 10% of breast cancers were classified as normal-like and can be ER tumors and have an intermediate prognosis.
+
+In another paper “Comprehensive Molecular Portraits of Invasive Lobular Breast Cancer” published in 2015, invasive lobular carcinoma (ILC) was focused on as the second most common histologic subtype of invasive breast cancer along with some potential clinical options. Fisher’s test and binary of copy number alterations and mutations were used to analyze selected events.
+The authors also used the microarray approach. Limmavoom package helps them perform differential expression analysis on RNA-seq data. It is to estimate the mean-variance relationship in the data to compute an appropriate precision weight for each observation, this could possibly be used in our project. Expression levels and proteins levels data was used for protein differential expression analysis and was assessed by t test as well, like the previous paper. Another procedure that they used is Consensus Cluster Plus Analysis to determine ILC subtypes based on 1000 most differentially expressed genes and a classifier built by CIaNC. They have found that lobular tumors were predominantly classified as LumA and are ER positive tumors. ER status was clinically determined by immunohistochemistry on 120 of 127 ILC cases, with 94% (n = 113) scoring positively. Their studies also showed that mixed histology tumors really tend to resemble ILC and IDC. Moreover, IDC and ILC discriminant molecular features, in particular CDH1 status, could be used to stratify mixed tumors into ILC-like and IDC-like tumor subgroups. The two papers use microarray, t-test, and stratified samplings. Each has some unique methods of classification that we could also try out for our project.
+ 
+
 
 # Summary Statistics and Data Processing 
 
@@ -425,3 +434,4 @@ rownames(xgb_output) <- c('folds 1 and 2 compared to 3','folds 1 and 3 compared 
 kable(xgb_output)
 
 ```
+
