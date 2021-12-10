@@ -1,6 +1,6 @@
 ---
 title: "Classification of cancer status based on genetic markers using various unsupervised learning, classification and regression methods"
-author: "Duyen Ho, Michael Garbus, Christina Hu"
+author: "Duyen Ho (duyenho2), Michael Garbus (mgarbus2), Team Lead: Christina Hu (ch35)"
 date: "12/6/2021"
 output:
   pdf_document:
@@ -51,7 +51,7 @@ We consulted some research involving the subject to guide us in our modelling. T
 The first study considered was "Breast Cancer Prediction: A Comparative Study Using Machine
 Learning Techniques", published in 2020 by Islam, M.M. et al. in SN Computer Science.  The paper compares 5 different supervised machine learning techniques (support vector machine, K-nearest neighbors, random forests, artificial neural networks, and finally, logistic regression).  They performed little preprocessing on the data, as they only removed 16 NA variables. They divided the data into test and train sets, and used a 10-fold cross validation, with nine-fold used for training and the remaining fold used for testing. The results revealed that ANNs return the highest accuracy ($98.57\%$), KNN and SVM came second ($97.1\%$), and random forests and logistic regression came third, clocking in with an accuracy of $95.71\%$ for the two models. ANNs also achieved the highest specificity ($96\%$), whereas SVM achieved the lowest, at around $92.3\%$. KNN and random forest had a specificity of $98.53\%$, whereas logistic regression had a specificity of $95.65\%$. ANN and SVM achieved the highest sensitivity, clocking in at exactly $100\%$. This made SVM and ANN very attractive to us when considering our model selection. KNN had a sensitivity of $97.82\%$, Random Forest had a sensitivity of $95.65\%$, and logistic regression had a sensitivity of $95.74\%$.
 
-However, the highest values for AUC were KNN and a random forest model, both achieving an AUC of $99\%$. 
+However, the highest values for AUC were KNN and a random forest model, both achieving an AUC of $99\%$. As a result, we decided to use these models for the project.
 
 In the discussion of related works, the authors mentioned another study which received a $98.83\%$ accuracy for a boosted trees random forest model, which inspired us to test gradient boosted trees for the final part of the project, as they will be able to determine which features are important, and hopefully cut down on features as well.
 
@@ -103,13 +103,13 @@ brca_org <- brca_org[,-1937]
 brca_org <- brca_org[((brca_org$histological.type == "infiltrating lobular carcinoma") | (brca_org$histological.type == "infiltrating ductal carcinoma")) & ((brca_org$HER2.Final.Status == "Positive") | (brca_org$HER2.Final.Status == "Negative")) & ((brca_org$ER.Status == "Positive") | (brca_org$ER.Status == "Negative")) & ((brca_org$PR.Status == "Positive") | (brca_org$PR.Status == "Negative")),]
 ```
 
-Dimension and sample of our cleaned dataset:
+Dimension and sample of our cleaned dataset (only the outcomes):
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #cleaned data from our github, this should be the same as brca_org
 brca_data  = read.csv("https://raw.githubusercontent.com/mgarbvs/STAT-432-final-project/main/cleaned_brca_data.csv")
 brca_data = brca_data[,-(1:2)]
 dim(brca_data)
-brca_data[1:5,1935:1940]
+brca_data[1:5,1937:1940]
 ```
 
 •	There was no missing value in the entire dataset, so there should be no missing values in the continuous predictors as well
@@ -160,7 +160,7 @@ non_categorical_brca =  non_categorical_brca[, -c(cor_list)]
 
 First, we will use KNN model to predict `PR.Status`. We will use a test train split of 80/20 on the data. We will only be using the non-categorical variables to build the KNN model since we ran into a lot of errors trying to incorporate the categorical variables
 
-We will find the optimal k-value to use, ranging from k=1-10:
+We will find the optimal k-value to use, ranging from k=1-10.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 library(class)
 # set the seed to make partition reproducible
@@ -183,7 +183,7 @@ for(i in 1:length(k_vals)) {
 }
 ```
 
-Next, we will plot the graph of the classification errors for each k-value and see if we can use the result to determine the best k:
+Plot the graph of the classification errors for each k-value and see if we can use the result to determine the best k:
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 plot(k_vals, err_vals, type = "l", xlab = "k-value", ylab = "Classification Error")
@@ -192,7 +192,7 @@ title("Classification Error per K-value")
 
 As shown from the plot, the k-value with the lowest classification error is k=7, so we will use that for our model.
 
-Next, use K=7 to create our KNN model and display the confusion matrix:
+Next, use k=7 to create our KNN model and display the confusion matrix:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(432)
 train_y = as.matrix(outcomes$PR.Status[train_ind])
@@ -211,7 +211,7 @@ The classificaton error for a model with k=7 is 1-`r (cmat[1,1]+cmat[2,2])/sum(c
 
 ## Modeling with Lasso (predict PR.Status)
 
-Next, we will create a Lasso model with 10-fold cross-validation to help create `PR.Status`:
+Next, we will create a Lasso model with 10-fold cross-validation to help predict `PR.Status`.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 suppressMessages(library(glmnet))
 set.seed(432)
@@ -318,9 +318,11 @@ rad.svm <- prediction(as.numeric(as.factor(radial_svm_prediction)), as.factor(te
 ```
 
 Finally, let us display the results of the Linear and Radial SVM AUC:
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE} 
 # Linear has a performance of about 65.98%
-performance(lin.svm,measure = "auc")@y.values[[1]]
+performance(lin.svm, measure = "auc")@y.values[[1]]
+
 # Radial has performance of about 50%
 performance(rad.svm,measure = "auc")@y.values[[1]]
 ```
@@ -329,7 +331,7 @@ Looking at the results above, Linear SVM has AUC = `r performance(lin.svm,measur
 
 ## Modelling `histological.type` with Random Forests
 
-Next, let us use a Random Forest model:
+Next, let us use a Random Forest model.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE} 
 train_y_hist= as.matrix(outcomes$histological.type[train_ind])
 brca_train_2 = as.matrix(cbind(brca_train, train_y_hist))
@@ -342,7 +344,7 @@ set.seed(432)
 rf.fit = randomForest(data.matrix(brca_train_2[, -c(640)]), y = as.factor(brca_train_2[, 640]), ntree = 4, mtry = 4, nodesize = 8, sampsize = 50)
 ```
 
-Next, use this model to predict on the test data:
+Next, use this model to predict on the test data and display the AUC plot:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align = 'center'} 
 test.predictions <- predict(rf.fit, type="prob", newdata=brca_test)[,2]
 correct_hist = as.factor(outcomes$histological.type[-train_ind])
@@ -359,19 +361,19 @@ The AUC for the random forest model is `r performance(rf_pr_test, measure = "auc
 
 ### `histological.type` Summary:
 
-To summarize our models, we used Linear and Radial SVM, which had AUC values of `r performance(lin.svm,measure = "auc")@y.values[[1]]` and `r performance(rad.svm,measure = "auc")@y.values[[1]]` respectively. For random forest, the AUC value resulted in `r performance(rf_pr_test, measure = "auc")@y.values[[1]] `. Therefore, the random forest model can be determined as the better model for predicting `histological.type`, although its AUC score is still a bit low.
+To summarize our models, we used Linear and Radial SVM, which had AUC values of `r performance(lin.svm,measure = "auc")@y.values[[1]]` and `r performance(rad.svm,measure = "auc")@y.values[[1]]` respectively. For random forest, the AUC value resulted in `r performance(rf_pr_test, measure = "auc")@y.values[[1]] `. Therefore, the Linear SVM model can be determined as the better model for predicting `histological.type`, although its AUC score is still a bit low.
 
 
 # 50-Variable Selection
 
-We selected the 50 variables which had the highest correlation as we did in earlier modelling attempts. For the 50-variable selection model, we decided to consider a multi-label machine learning tool, `utiml`, so we would be able to predict all four labels from our 50 predictors. Serendipitously, this library is very similar to the WEKA tool used in Asri et al. which led us to consider using SVM for this application as well. Fortunately, the `utiml` package uses the package we used for SVM in this class, `e1071`. XGBoost is also used in this package, and is able to use AUC values as its objective function. We decided to use XGBoost, as it had slightly higher outcomes for our mean AUC values after cross validation when compared to the outcomes from SVM.   
+Starting with the cleaned data, we selected the 50 variables which had the highest correlation, using the correlation matrix approach as we did in earlier modelling attempts. We used 3-fold cross-validation, taking 2 folds for test and 1 fold for train each time.
 
-Finally, let us display our 3-fold cross-validated and averaged AUC:
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-library(utiml)
-library(mldr)
-library(kableExtra)
-library(xgboost)
+```{r, message=FALSE}
+suppressMessages(library(utiml))
+suppressMessages(library(mldr))
+suppressMessages(library(kableExtra))
+suppressMessages(library(xgboost))
+
 set.seed(1)
 #Add Folds
 brca_fold = read.csv("https://raw.githubusercontent.com/mgarbvs/STAT-432-final-project/mgarbus2/brca_data_w_subtypes.csv")
@@ -388,9 +390,16 @@ non_response_brca <- non_response_brca[,c(cor_list,1937)]
 outcomes = brca_fold %>% select(c("PR.Status", "ER.Status", "HER2.Final.Status", "histological.type"))
 response_data <- outcomes
 response_data_n <- data.frame(sapply(response_data, function(x) as.numeric(as.factor(x)) - 1))
-# Create two partitions (train and test) of toyml multi-label dataset
-#with_factors 
+
+# 50 highest corr vars with_factors 
 factor_data <- cbind(non_response_brca[c(1:50,980)],response_data_n)
+```
+
+
+For the 50-variable selection model, we decided to consider a multi-label machine learning tool, `utiml`, so we would be able to predict all four labels from our 50 predictors. Serendipitously, this library is very similar to the WEKA tool used in Asri et al. which led us to consider using SVM for this application as well. Fortunately, the `utiml` package uses the package we used for SVM in this class, `e1071`. XGBoost is also used in this package, and is able to use AUC values as its objective function. We ultimately decided to use XGBoost, as it had slightly higher outcomes for our mean AUC values after cross validation when compared to the outcomes from SVM.   
+
+```{r, message=FALSE, warning=FALSE}
+# Create two partitions (train and test) of toyml multi-label dataset
 my_mldr <- mldr_from_dataframe(factor_data[,-51], labelIndices = c(52:54))
 mldr_12 <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(1,2),][,-51], labelIndices = c(51:54))
 mldr_23 <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(2,3),][,-51], labelIndices = c(51:54))
@@ -400,6 +409,11 @@ mldr_1_test <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(1),][,-
 mldr_2_test <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(2),][,-51], labelIndices = c(51:54))
 mldr_3_test <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(3),][,-51], labelIndices = c(51:54))
 
+```
+
+
+```{r, echo=FALSE}
+## COMMENT IN FOR SVM MODEL
 
 #svm_12_pred <-br(mldr_12,base.algorith="SVM", seed=1, kernel = "linear", cost = 0.6)
 #svm_13_pred <-br(mldr_13,base.algorith="SVM", seed=1, kernel = "linear", cost = 0.6)
@@ -414,8 +428,12 @@ mldr_3_test <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(3),][,-
 # svm_output <- rbind(svm_results, colMeans(svm_results))
 # rownames(svm_output) <- c('folds 1 and 2 compared to 3','folds 1 and 3 compared to 2','folds 2 and 3 compared to 1','mean AUC value')
 #kable(svm_output)
+```
 
-#XGB 
+Finally, let us display our 3-fold cross-validated and averaged AUC:
+
+```{r}
+#XGB MODEL
 xgb_12_pred  <-br(mldr_12,base.algorith="XGB", seed=1, cores = 1, eta = 0.3575, nrounds = 50, eval_metric = "auc",subsample = 1)
 xgb_13_pred  <-br(mldr_13,base.algorith="XGB", seed=1, cores = 1, eta = 0.3575, nrounds = 50, eval_metric = "auc")
 xgb_23_pred  <-br(mldr_23,base.algorith="XGB", seed=1, cores = 1, eta = 0.3575, nrounds = 50, eval_metric = "auc")
@@ -428,8 +446,23 @@ xgb_results <- rbind(multilabel_evaluate(mldr_3_test, prediction_12_3_xgb, measu
 
 xgb_output <- rbind(xgb_results, colMeans(xgb_results))
 rownames(xgb_output) <- c('folds 1 and 2 compared to 3','folds 1 and 3 compared to 2','folds 2 and 3 compared to 1','mean AUC value')
-kable(svm_output)
 
+kable(xgb_output)
 ```
-We believe that the micro-AUC is the preferred metric as we the data has a class imbalance and the micro-AUC accounts for that.
+
+
+The first 3 rows correspond to the micro and macro AUC for the different fold comparisons. The macro AUC and micro AUC are the average AUC for each of the 4 outcomes at that CV level. Finally, the last row is the averaged out AUC value for all folds.
+
+
+As shown on the table, the micro-AUC is significantly higher than the macro-AUC. Using the 50-variable model, we were able to result in an average micro-AUC of 0.9148545.
+
+**We believe that the micro-AUC is the preferred metric as we the data has a class imbalance and the micro-AUC accounts for that.** 
+
+
+
+
+
+
+
+
 
