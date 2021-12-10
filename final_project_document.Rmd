@@ -60,14 +60,14 @@ Prediction and Diagnosis", published in 2016 by Asri,H. et al in Procedia Comput
 
 While we do not believe that time constraints will be important in regards to our model as we are trying to achieve a high level of classification, it is interesting that these values are different. We imagine that this may be due to a difference in tools used, or perhaps, in the kernel used for the SVM classification. Additionally, the study also found that SVM had the highest AUC value on the ROC curve ($99\%$). For these reason, we decided to use SVM for our model.
 
-For the creation of our final model, we consulted some literature on predicting in medical data. We found "Predicting Missing Values in Medical Data via XGBoost Regression", from Zhang et al. Because of this model, as well as discussion in Islam et al., we decided to consider XGBoost. Fortunately, XGBoost is able to use AUC values as its objective function. We decided to use a multi-label machine learning tool, `utiml`, so we would be able to predict all four labels from our 50 predictors. Serendipitously, this library is very similar to the WEKA tool used in Asri et al. which led us to consider using SVM for this application as well. Fortunately, the `utiml` package uses the package we used for SVM in this class, `e1071`. After further analysis, SVM was selected.
-
 In the paper “Supervised Risk Predictor of Breast Cancer Based on Intrinsic Subtypes” published in 2009 by many authors from multiple institutions, the authors focus on the approaches to improve on current standards for breast cancer prognosis and prediction of chemotherapy benefit by developing a risk model using gene expressions.
 Various methods were used such as Samples and Clinical Data, Microarray, Identification of Prototypical Intrinsic Subtype Samples and Genes, Sample Subtype Prediction. A standardized method of classification using a statistically derived gene and sample set validated across multiple cohorts was developed. They split training and testing data for patient cohorts. Their method is also to use microarray and quantitative reverse transcriptase polymerase chain reaction data to develop a 50-gene subtype predictor using data from prototype samples. In the end, they compared four different models for prediction of relapse and used C-index to compare the strength of the models. C-index is calculated for each test set to form the estimate of each model with two sample t test.
 They found that all the intrinsic subtypes are present and significant for outcome predictions in cohorts of patients diagnosed with ER tumors. Stratification of the subtypes within HER2clin-positive samples did not show significance in outcome predictions. And also, approximately 10% of breast cancers were classified as normal-like and can be ER tumors and have an intermediate prognosis.
 
 In another paper “Comprehensive Molecular Portraits of Invasive Lobular Breast Cancer” published in 2015, invasive lobular carcinoma (ILC) was focused on as the second most common histologic subtype of invasive breast cancer along with some potential clinical options. Fisher’s test and binary of copy number alterations and mutations were used to analyze selected events.
 The authors also used the microarray approach. Limmavoom package helps them perform differential expression analysis on RNA-seq data. It is to estimate the mean-variance relationship in the data to compute an appropriate precision weight for each observation, this could possibly be used in our project. Expression levels and proteins levels data was used for protein differential expression analysis and was assessed by t test as well, like the previous paper. Another procedure that they used is Consensus Cluster Plus Analysis to determine ILC subtypes based on 1000 most differentially expressed genes and a classifier built by CIaNC. They have found that lobular tumors were predominantly classified as LumA and are ER positive tumors. ER status was clinically determined by immunohistochemistry on 120 of 127 ILC cases, with 94% (n = 113) scoring positively. Their studies also showed that mixed histology tumors really tend to resemble ILC and IDC. Moreover, IDC and ILC discriminant molecular features, in particular CDH1 status, could be used to stratify mixed tumors into ILC-like and IDC-like tumor subgroups. The two papers use microarray, t-test, and stratified samplings. Each has some unique methods of classification that we could also try out for our project.
+
+For the creation of our final model, we consulted some literature on predicting in medical data. We found "Predicting Missing Values in Medical Data via XGBoost Regression", from Zhang et al., which found that XGBoost was able to improve prediction of missing values by 20% for over 8200 observations. Because of this model, as well as discussion in Islam et al., we decided to consider XGBoost.
  
 
 
@@ -364,10 +364,10 @@ To summarize our models, we used Linear and Radial SVM, which had AUC values of 
 
 # 50-Variable Selection
 
-For the 50-variable selection, we decided to...TODO
+We selected the 50 variables which had the highest correlation as we did in earlier modelling attempts. For the 50-variable selection model, we decided to consider a multi-label machine learning tool, `utiml`, so we would be able to predict all four labels from our 50 predictors. Serendipitously, this library is very similar to the WEKA tool used in Asri et al. which led us to consider using SVM for this application as well. Fortunately, the `utiml` package uses the package we used for SVM in this class, `e1071`. XGBoost is also used in this package, and is able to use AUC values as its objective function. We decided to use XGBoost, as it had slightly higher outcomes for our mean AUC values after cross validation when compared to the outcomes from SVM.   
 
 Finally, let us display our 3-fold cross-validated and averaged AUC:
-```{r, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 library(utiml)
 library(mldr)
 library(kableExtra)
@@ -381,7 +381,6 @@ brca_fold$foldId <- sample(1:3, 705, replace = TRUE)
 brca_fold <- brca_fold[((brca_fold$histological.type == "infiltrating lobular carcinoma") | (brca_fold$histological.type == "infiltrating ductal carcinoma")) & ((brca_fold$HER2.Final.Status == "Positive") | (brca_fold$HER2.Final.Status == "Negative")) & ((brca_fold$ER.Status == "Positive") | (brca_fold$ER.Status == "Negative")) & ((brca_fold$PR.Status == "Positive") | (brca_fold$PR.Status == "Negative")),]
 
 non_response_brca <- brca_fold[,-c(which(colnames(brca_fold) %in% c('PR.Status','ER.Status','HER2.Final.Status','histological.type')))]
-non_response_brca$foldId
 cor_mat = cor(non_response_brca[,-1937])
 # returns vector of indices to remove
 cor_list = findCorrelation(cor_mat, cutoff = .7)
@@ -402,36 +401,35 @@ mldr_2_test <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(2),][,-
 mldr_3_test <- mldr_from_dataframe(factor_data[factor_data$foldId %in% c(3),][,-51], labelIndices = c(51:54))
 
 
-svm_12_pred <-br(mldr_12,base.algorith="SVM", seed=432, kernel = "linear", cost = 0.6)
-svm_13_pred <-br(mldr_13,base.algorith="SVM", seed=432, kernel = "linear", cost = 0.6)
-svm_23_pred <-br(mldr_23,base.algorith="SVM", seed=432, kernel = "linear", cost = 0.6)
+#svm_12_pred <-br(mldr_12,base.algorith="SVM", seed=1, kernel = "linear", cost = 0.6)
+#svm_13_pred <-br(mldr_13,base.algorith="SVM", seed=1, kernel = "linear", cost = 0.6)
+#svm_23_pred <-br(mldr_23,base.algorith="SVM", seed=1, kernel = "linear", cost = 0.6)
 
-prediction_12_3_svm <- predict(svm_12_pred, mldr_3_test, type = "class")
-prediction_13_2_svm <- predict(svm_13_pred, mldr_2_test, type = "class")
-prediction_23_1_svm <- predict(svm_23_pred, mldr_1_test, type = "class")
-svm_results <- rbind(multilabel_evaluate(mldr_3_test, prediction_12_3_svm, measures = c("macro-based", "micro-based"))[c(1,5)],
-multilabel_evaluate(mldr_2_test, prediction_13_2_svm, measures = c("macro-based", "micro-based"))[c(1,5)],
-multilabel_evaluate(mldr_1_test, prediction_23_1_svm, measures = c("macro-based", "micro-based"))[c(1,5)])
-svm_output <- rbind(svm_results, colMeans(svm_results))
-rownames(svm_output) <- c('folds 1 and 2 compared to 3','folds 1 and 3 compared to 2','folds 2 and 3 compared to 1','mean AUC value')
-kable(svm_output)
+# prediction_12_3_svm <- predict(svm_12_pred, mldr_3_test, type = "class")
+# prediction_13_2_svm <- predict(svm_13_pred, mldr_2_test, type = "class")
+# prediction_23_1_svm <- predict(svm_23_pred, mldr_1_test, type = "class")
+# svm_results <- rbind(multilabel_evaluate(mldr_3_test, prediction_12_3_svm, measures = c("macro-based", "micro-based"))[c(1,5)],
+# multilabel_evaluate(mldr_2_test, prediction_13_2_svm, measures = c("macro-based", "micro-based"))[c(1,5)],
+# multilabel_evaluate(mldr_1_test, prediction_23_1_svm, measures = c("macro-based", "micro-based"))[c(1,5)])
+# svm_output <- rbind(svm_results, colMeans(svm_results))
+# rownames(svm_output) <- c('folds 1 and 2 compared to 3','folds 1 and 3 compared to 2','folds 2 and 3 compared to 1','mean AUC value')
+#kable(svm_output)
 
 #XGB 
-xgb_12_pred  <-br(mldr_12,base.algorith="XGB", seed=432, cores = 1, eta = 0.3575, nrounds = 150, eval_metric = "auc",subsample = 1)
-xgb_13_pred  <-br(mldr_13,base.algorith="XGB", seed=432, cores = 1, eta = 0.3575, nrounds = 150, eval_metric = "auc")
-xgb_23_pred  <-br(mldr_23,base.algorith="XGB", seed=432, cores = 1, eta = 0.3575, nrounds = 150, eval_metric = "auc")
+xgb_12_pred  <-br(mldr_12,base.algorith="XGB", seed=1, cores = 1, eta = 0.3575, nrounds = 50, eval_metric = "auc",subsample = 1)
+xgb_13_pred  <-br(mldr_13,base.algorith="XGB", seed=1, cores = 1, eta = 0.3575, nrounds = 50, eval_metric = "auc")
+xgb_23_pred  <-br(mldr_23,base.algorith="XGB", seed=1, cores = 1, eta = 0.3575, nrounds = 50, eval_metric = "auc")
 
 prediction_12_3_xgb <- predict(xgb_12_pred, mldr_3_test, type = "class")
-
 prediction_13_2_xgb <- predict(xgb_13_pred, mldr_2_test, type = "class")
-
 prediction_23_1_xgb <- predict(xgb_23_pred, mldr_1_test, type = "class")
 
 xgb_results <- rbind(multilabel_evaluate(mldr_3_test, prediction_12_3_xgb, measures = c("macro-based", "micro-based"))[c(1,5)],multilabel_evaluate(mldr_2_test, prediction_13_2_xgb, measures = c("macro-based", "micro-based"))[c(1,5)],multilabel_evaluate(mldr_1_test, prediction_23_1_xgb, measures = c("macro-based", "micro-based"))[c(1,5)])
 
 xgb_output <- rbind(xgb_results, colMeans(xgb_results))
 rownames(xgb_output) <- c('folds 1 and 2 compared to 3','folds 1 and 3 compared to 2','folds 2 and 3 compared to 1','mean AUC value')
-kable(xgb_output)
+kable(svm_output)
 
 ```
+We believe that the micro-AUC is the preferred metric as we the data has a class imbalance and the micro-AUC accounts for that.
 
